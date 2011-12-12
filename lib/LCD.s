@@ -199,3 +199,17 @@ LCD_write_cmd
 			
 			POP 	{r1-r3,LR}
 			MOV 	PC, LR                 ; Return back to print_str
+
+
+;---------------------------
+; LCD_clear
+; 	Wrapper routine to clear the LCD
+;
+;	Params: N/A
+;	Return: N/A
+;
+; Tested : No 
+;---------------------------
+LCD_clear
+			MOV		r0, #01
+			B		LCD_write_cmd
