@@ -1,4 +1,4 @@
-;---------------------------
+	;---------------------------
 ; <<routine>>
 ; 	<<desc>>
 ;
@@ -70,51 +70,99 @@ LCD_backlight_off
 			POP		{r0,r1}
 			MOV		PC, LR
 
+;---------------------------
+; LCD_io_wait
+; 	Waits for LCD to become ready, called
+;	from LCD_write_char and LCD_read_char (?)
+;
+;	Params: N/A
+;	Return: N/A
+;
+; Tested : No - ish
+;---------------------------
 LCD_io_wait
-			MOV		r2, #IO_space
-			LDR 	r3, [r2, #PIO_B]
+			PUSH	{r0-r3}
+			MOV		r0, #IO_space
+			LDR 	r2, [r0, #PIO_B]
     
-			ORR 	r3, r3, #0b00000100     ; Set R/W=1
-			AND 	r3, r3, #0b11111101     ; Set RS=0
-			STR 	r3, [r2, #PIO_B]
+			ORR 	r2, r2, #0b00000100     ; Set R/W=1
+			AND 	r2, r2, #0b11111101     ; Set RS=0
+			STR 	r2, [r0, #PIO_B]
         
 _lcdiowait
-			ORR 	r3, r3, #0b00000001     ; Set E=1
-			STR 	r3, [r2, #PIO_B]
+			ORR 	r2, r2, #0b00000001     ; Set E=1
+			STR 	r2, [r0, #PIO_B]
 			
-			;Read LCD status byte
-			;MOV 	r0, #PIO_A             ; Load PortA addr
-			LDR 	r1, [r2, #PIO_A]
+			;Read LCD status byte    
+			LDR 	r1, [r0, #PIO_A]		; Load PortA addr
 			
-			AND 	r3, r3, #0b11111110     ; Set E=0
-			STR 	r3, [r2, #PIO_A]
-			
-			MOV 	r0, #PIO_A             ; Check if LCD is ready
-			AND 	r4, r1, #0b10000000
-			CMP 	r4, #0                  
+			AND 	r2, r2, #0b11111110     ; Set E=0
+			STR 	r2, [r0, #PIO_A]
+			           
+			AND 	r3, r1, #0b10000000		; Check if LCD is ready
+			CMP 	r3, #0                  
 			BNE 	_lcdiowait               ; If LCD is not ready, try again	  
 
             ;LCD is ready if here
-			POP		{r0-r4}
+			POP		{r0-r3}
 			MOV		PC, LR
 
+;---------------------------
+; LCD_write_char
+; 	<desc>
+;
+;	Params: R0 - Char to print
+;	Return: N/A
+;
+; Tested : No
+;---------------------------
 LCD_write_char
-			PUSH {r1-r5}                ; Make sure we preserve these reg
-			MOV r5, r0                  ; Make a copy of the arg
+			PUSH 	{r1-r3,LR}                ; Make sure we preserve these reg
+			;MOV r5, r0                  ; Make a copy of the arg
 			
-			BL	LCD_io_wait
+			BL		LCD_io_wait				; Do spinloop until ready
 
-			ORR r3, r3, #0b11111011     ; Set R/W=0        
-			AND r3, r3, #0b00000010     ; Set RS=1 
-			STR r3, [r2]
+			MOV		r1, #IO_space
+			ORR 	r3, r3, #0b11111011     ; Set R/W=0        
+			AND 	r3, r3, #0b00000010     ; Set RS=1 
+			STR 	r3, [r1, #PIO_B]
 			
-			STR r5, [r0]                ; Print the char given
+			STR 	r0, [r1, #PIO_A]        ; Print the char given
 			
-			ORR r3, r3, #0b00000001     ; Set E=1
-			STR r3, [r2]        
-			AND r3, r3, #0b11111110     ; Set E=0
-			STR r3, [r2]
+			ORR 	r3, r3, #0b00000001     ; Set E=1
+			STR 	r3, [r1, #PIO_B]        
+			AND 	r3, r3, #0b11111110     ; Set E=0
+			STR 	r3, [r1, #PIO_B]
 			
-			POP {r1-r5}
-			MOV PC, LR                 ; Return back to print_str
+			POP 	{r1-r3,LR}
+			MOV 	PC, LR                 ; Return back to print_str
 
+
+;---------------------------
+; LCD_write_str
+; 	Prints a string that is pointed to
+;	by the address in R0. Strings are
+;	null terminated.
+;
+;	Params: R0 - Address of string to print
+;	Return: N/A
+;
+; Tested : Yes
+;---------------------------
+LCD_write_str
+			PUSH 	{r0,r4,LR}			; Save Reg that are used
+
+_fetch_char 
+			LDRB 	r4, [r0], #1   		; Fetch character
+            CMP  	r4, #0         		; Check for null char
+            BEQ  	_print_str_end
+
+			PUSH	{r0}
+            MOV  	r0,r4          		; Put char to print into R0
+            BL   	LCD_write_char  	; Do print_char
+			POP		{r0}
+
+            B   	_fetch_char			; Get next char
+_print_str_end                
+            POP 	{r0,r4,LR}
+            MOV 	PC,LR
