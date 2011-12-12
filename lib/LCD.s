@@ -123,6 +123,7 @@ LCD_write_char
 			BL		LCD_io_wait				; Do spinloop until ready
 
 			MOV		r1, #IO_space
+			LDR 	r3, [r0, #PIO_B]
 			ORR 	r3, r3, #0b11111011     ; Set R/W=0        
 			AND 	r3, r3, #0b00000010     ; Set RS=1 
 			STR 	r3, [r1, #PIO_B]
@@ -166,3 +167,35 @@ _fetch_char
 _print_str_end                
             POP 	{r0,r4,LR}
             MOV 	PC,LR
+
+;---------------------------
+; LCD_write_cmd
+; 	Sends a command character to the LCD
+;
+;	Params: R0 - Command character #
+;	Return: N/A
+;
+;	Bugs/Issues: LED change on writing char, problomatic?
+;
+; Tested : No - Only clear
+;---------------------------
+LCD_write_cmd
+			PUSH 	{r1-r3,LR}                ; Make sure we preserve these reg
+
+			BL		LCD_io_wait				; Do spinloop until ready
+
+			MOV		r1, #IO_space
+			LDR 	r3, [r0, #PIO_B]
+			AND		r3, r3, #0b11111001     ; Set R/W=0 & RS=0      
+			EOR 	r3, r3, #0b00000000     ;
+
+			STR 	r3, [r1, #PIO_B]
+			STR 	r0, [r1, #PIO_A]        ; Print the char given
+			
+			ORR 	r3, r3, #0b00000001     ; Set E=1
+			STR 	r3, [r1, #PIO_B]        
+			AND 	r3, r3, #0b11111110     ; Set E=0
+			STR 	r3, [r1, #PIO_B]
+			
+			POP 	{r1-r3,LR}
+			MOV 	PC, LR                 ; Return back to print_str
