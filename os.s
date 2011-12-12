@@ -108,9 +108,11 @@ svc_end
 			POP		{R4,R5,LR}				; Recover registers prior to SVC
 			MOVS	PC, LR					; Return back to user land
 			
-
+; code crashes and runs ?off the end? of the RAM
 prefetch_abort
 			B		. ;end						; End program
+
+; attempt to read or write an I/O port while in user mode
 data_abort
 			B		. ;end						; End program
 irq
