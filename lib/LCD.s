@@ -213,3 +213,37 @@ LCD_write_cmd
 LCD_clear
 			MOV		r0, #01
 			B		LCD_write_cmd
+
+LCD_set_cursor
+        ;Set row
+        CMP     r0, #0      
+        MOVEQ   r0, #&00       ; First row
+        MOVNE   r0, #&40       ; Second row
+        ;Set column
+        ADD     r0, r0, r1      ; Set position to be row+col
+        ORR     r0, r0, #&80  ; OR with set cursor command
+        B   LCD_write_cmd
+
+;---------------------------
+; LCD_print_dec_digit
+;   Prints a single digit on the LCD
+;
+;   Params: R0 - Single digit to print
+;   Return: N/A
+;---------------------------
+LCD_print_dec_digit
+        ADD r0, r0, #ASCII_OFFSET_0
+        B   LCD_write_char
+
+
+;---------------------------
+; LCD_print_dec
+;   Prints a string of digits on the LCD
+;
+;   Params: R0 - String of digits to print
+;   Return: N/A
+;---------------------------
+LCD_print_dec
+        ADD r0, r0, #ASCII_OFFSET_0
+        B   LCD_write_char
+        
