@@ -16,7 +16,7 @@ irq
 			BNE		irq_btn_btm				
 			TST		r3, #BTN_ST1_PRESSED	; Check for BottomButton press
 			BNE		irq_btn_st1			
-			TST		r3, #TIMER				; Check for timer tick
+			TST		r3, #BIT0_SET				; Check for timer tick
 			BNE		irq_clk_tick
 
 			BIC		r3, r3, #&FF			; Clear all IRQ vectors, since I dont
@@ -27,7 +27,7 @@ irq_btn_top
 			BIC		r3, r3, #BTN_TOP		; Clear bit so we know it has been serviced
 			STRB	r3, [r4, #IRQ_SRC]
 			PUSH	{r0}
-			MOV		r0, #&54
+			MOV		r0, #&30
 			SVC		print_char
 			POP		{r0}
 			B		irq_end
@@ -35,7 +35,7 @@ irq_btn_btm
 			BIC		r3, r3, #BTN_BOTTOM		; Clear bit so we know it has been serviced
 			STRB	r3, [r4, #IRQ_SRC]
 			PUSH	{r0}
-			MOV		r0, #&42
+			MOV		r0, #&31
 			SVC		print_char
 			POP		{r0}
 			B		irq_end

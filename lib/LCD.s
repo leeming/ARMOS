@@ -232,8 +232,10 @@ LCD_set_cursor
 ;   Return: N/A
 ;---------------------------
 LCD_print_dec_digit
+
+
         ADD r0, r0, #ASCII_OFFSET_0
-        B   LCD_write_char
+        BL   LCD_write_char
 
 
 ;---------------------------

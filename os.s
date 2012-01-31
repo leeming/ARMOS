@@ -23,6 +23,7 @@ INCLUDE params_labboard.s
         INCLUDE lib/LCD.s
         INCLUDE lib/LED.s
         INCLUDE lib/clock.s
+        INCLUDE lib/math.s
 
 
 ; Implementations of Exception vectors are handled here
@@ -34,7 +35,7 @@ reset
 			; Change to IRQ mode
 			MRS 	R0, CPSR 				; Get current CPSR
 			BIC 	R0, R0, #&0F 			; Clear low order bits
-			ORR		R0,	R0, #&12			; Set FIQ mode bits
+			ORR		R0,	R0, #&12			; Set IRQ mode bits
 			MSR 	CPSR_c, R0 				; Rewrite CPSR
 			NOP								; Apparently some ARM have a bug
 											; and this NOP fixes it
@@ -150,15 +151,20 @@ start
 
         ADR r0, mystring2
         SVC print_str
-	
+
+B .
+
         SVC		0						; Quit
 
-mystring    DEFB    "Dont't Steal Me", 0
+mystring    DEFB    "Hello", 0
             ALIGN
 mystring2   DEFB    "Please", 0
             ALIGN
 svc_unknown_str 	DEFB 	"Unknown SVC #", 0	
 			ALIGN
+nop
+on_time         DEFS     1
+                ALIGN
 
 ;-------------------------------------------------------------------
 ; Stacks
