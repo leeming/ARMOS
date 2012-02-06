@@ -24,6 +24,7 @@ INCLUDE params_labboard.s
         INCLUDE lib/LED.s
         INCLUDE lib/clock.s
         INCLUDE lib/math.s
+        INCLUDE lib/bcd_convert.s
 
 
 ; Implementations of Exception vectors are handled here
@@ -87,8 +88,7 @@ undefinstr
 			B		.	;end
 			
 			
-svc_entry	
-			STR		LR, [SP, #-4]! 			; Push scratch register
+svc_entry
 			PUSH	{R4,R5,LR}				; Remember to save arg (if any)
 											; from the initial call
 									
@@ -130,36 +130,15 @@ INCLUDE sys_calls/svc_table.s
 			
 ;-------------------------------------------------------------------			
 			
-nop;Start the actual program here
+;Start the actual program here
 start		
+        ;INCLUDE user_progs/helloworld.s
+        INCLUDE user_progs/counter.s
+        ;INCLUDE user_progs/testPrintDigit.s
 
-        MOV r0, #1
-        ;SVC print_dec
-
-        MOV r0, #0
-        ;SVC print_dec
-
-        MOV r0, #9
-        ;SVC print_dec
-
-        ADR r0, mystring
-        SVC print_str
-
-        MOV r0, #1
-        MOV r1, #0
-        SVC set_lcd_cursor
-
-        ADR r0, mystring2
-        SVC print_str
-
-B .
 
         SVC		0						; Quit
 
-mystring    DEFB    "Hello", 0
-            ALIGN
-mystring2   DEFB    "Please", 0
-            ALIGN
 svc_unknown_str 	DEFB 	"Unknown SVC #", 0	
 			ALIGN
 nop

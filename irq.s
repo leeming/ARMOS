@@ -60,21 +60,9 @@ irq_clk_tick
 			cmp		r10, #10
 			movhs	r10, #0					; Add a second (tens)
 			addhs	r9, r9, #1
+
+
 			B		irq_end
-
-
 irq_end
 			pop		{r3,r4,r5}
 			subs	pc, lr, #4
-
-
-irq_print_time
-			push	{r0}
-			mov 	r0, #&30
-			add		r0, r0, r9
-			SVC 	clear_screen
-			SVC		print_char
-
-			pop		{r0}
-			b		irq_end
- 

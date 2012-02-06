@@ -14,3 +14,14 @@ clock_set_cmp
             add     r3, r3, R0              ; Add an additional [R0]ms
             strb    r3, [r4,#TIMER_CMP]     ; Store updated timer compare
 			pop		{r3,r4,pc}^
+
+
+print_time
+            push    {r0}
+            SVC     clear_screen
+
+            MOV R0, R9
+            BL LCD_print_dec
+
+            pop     {r0}
+            b       irq_end
