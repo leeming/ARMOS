@@ -6,6 +6,7 @@ svc_table	DEFW	_exit					; 0 - Exits the program
             DEFW    clock_read              ; 4 - Gets time (returned in R0)
             DEFW    LCD_print_dec           ; 5 - Prints a decimal number to LCD
             DEFW    LCD_set_cursor          ; 6 - Sets the LCD cursor
+            DEFW    clock_callback
 svc_table_end
 
 svc_unknown	ADR		R0, svc_unknown_str		; Grab error to print out
