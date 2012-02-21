@@ -32,6 +32,8 @@ reset
 			ADRL	SP, svr_stack			; Set supervisor stack pointer
 
 			BL		LCD_clear				; Start with clear LCD
+            BL      PCB_setup               ; Set up PCB
+
 
 			; Change to IRQ mode
 			MRS 	R0, CPSR 				; Get current CPSR
@@ -99,8 +101,8 @@ svc_entry
 			CMP		R4, #SVC_MAX			; Check upper limit
 			BHI		svc_unknown				; Branch on unknown SVC number
 			
-			ADR		LR,	svc_end				; Set LR to point to exit routine of SVC
-			ADR		R5, svc_table			; Grab address of SVC table
+			ADRL	LR,	svc_end				; Set LR to point to exit routine of SVC
+			ADRL    R5, svc_table			; Grab address of SVC table
 			LDR		PC, [R5, R4, LSL #2]	; Grab routine address from jump table
 
 			;B		end						; End program ? This code isnt reachable
@@ -125,17 +127,33 @@ fiq
 
 ;-------------------------------------------------------------------
 
-nop; SVC Table
+; SVC Table
 INCLUDE sys_calls/svc_table.s
-			
-;-------------------------------------------------------------------			
-			
-;Start the actual program here
-start		
-        ;INCLUDE user_progs/helloworld.s
-        INCLUDE user_progs/counter.s
-        ;INCLUDE user_progs/testPrintDigit.s
 
+;PCB
+INCLUDE pcb.s
+
+;-------------------------------------------------------------------			
+
+INCLUDE user_progs/helloworld.s
+;INCLUDE user_progs/counter.s
+;INCLUDE user_progs/testPrintDigit.s
+
+;Start the user programs here
+start		
+
+        ;Start the helloworld program first
+        ADR     R0, helloworldMain
+        SVC     new_process
+
+        MOV R0, #1
+        BL PCB_push_ready_queue
+
+        MOV R0, #2
+        BL PCB_push_ready_queue
+
+        MOV R0, #3
+        BL PCB_push_ready_queue
 
         SVC		0						; Quit
 

@@ -6,10 +6,10 @@ svc_table	DEFW	_exit					; 0 - Exits the program
             DEFW    clock_read              ; 4 - Gets time (returned in R0)
             DEFW    LCD_print_dec           ; 5 - Prints a decimal number to LCD
             DEFW    LCD_set_cursor          ; 6 - Sets the LCD cursor
-            DEFW    clock_callback
+            DEFW    PCB_create_process
 svc_table_end
 
-svc_unknown	ADR		R0, svc_unknown_str		; Grab error to print out
+svc_unknown	ADRL	R0, svc_unknown_str		; Grab error to print out
 			SVC		print_str
 
 			B		end						; Run unknown svr routine
@@ -22,8 +22,9 @@ print_str		EQU		3
 read_clk        EQU     4
 print_dec       EQU     5
 set_lcd_cursor  EQU     6
+new_process     EQU     7
 
-SVC_MAX		EQU		6						; Number of SVC routines
+SVC_MAX		EQU		7						; Number of SVC routines
 ;SVC_MAX			EQU	(svc_table_end-svc_table)
 
 
