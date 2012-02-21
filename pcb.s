@@ -14,14 +14,16 @@ PCB_OFFSET_REG      WORD    14
 PCB_OFFSET_SP       WORD
                     WORD    99
 PCB_OFFSET_STACK    WORD   
-
+PCB_OFFSET_BOTTOM   WORD
 
 
 PCB_NEXT_PROC_ID     DEFW   0x01        ; Next new proc id
 PCB_CURRENT_ID       DEFW   0x01        ; PCB currently active
 PCB_MAX_TIMESLICE    EQU    0x05        ; Number of clock ticks per timeslice
 PCB_MAX_NUM          EQU    0x02        ; Maximum number of PCBs
-PCB_SIZE             EQU    0x80        ; Size of each PCB block
+
+PCB_SIZE             EQU    (PCB_OFFSET_BOTTOM - PCB_record)
+;PCB_SIZE             EQU    0x80        ; Size of each PCB block
 
 
 ; Few PCB setup routines to run thru before adding processes
@@ -94,7 +96,8 @@ PCB_create_process
                 BL      _PCB_find_next_avil
 
                 ;Calculate block offset
-                MOV     R1, #PCB_SIZE
+                ;MOV     R1, #PCB_SIZE
+                ;MOV     R1,  #(PCB_OFFSET_BOTTOM - PCB_RECORD) / 4
                 MUL     R1, R1, R0              ; Offset from 'PCB_offset'
 
                 ;Set process ID
@@ -254,4 +257,5 @@ PCB_pop_ready_queue
                 SUB     R4, R4, #4
                 STR     R4, [R0]
 
-PCB_offset      DEFW    PCB_SIZE*PCB_MAX_NUM
+PCB_total       EQU     PCB_SIZE*PCB_MAX_NUM
+PCB_offset      DEFS    PCB_total
