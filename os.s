@@ -34,7 +34,7 @@ reset
 			BL		LCD_clear				; Start with clear LCD
             BL      PCB_setup               ; Set up PCB
 
-
+B       start; temp keep in priv mode
 			; Change to IRQ mode
 			MRS 	R0, CPSR 				; Get current CPSR
 			BIC 	R0, R0, #&0F 			; Clear low order bits
@@ -60,6 +60,8 @@ reset
 			MOV		r8, #IO_space			;
 			MOV		r0, #1					;
 			STRB	r0, [r8, #IRQ_EN]		;
+
+
 
 			; Change to user mode
 			MRS 	R0, CPSR 				; Get current CPSR
@@ -147,17 +149,28 @@ start
         SVC     new_process
 
         MOV R0, #1
-        BL PCB_push_ready_queue
+        BL PCB_add_ready_queue
+BL PCB_remove_ready_queue
+BL PCB_remove_ready_queue
 
         MOV R0, #2
-        BL PCB_push_ready_queue
+        BL PCB_add_ready_queue
+        MOV R0, #3
+        BL PCB_add_ready_queue
+        MOV R0, #4
+        BL PCB_add_ready_queue
+        MOV R0, #5
+        BL PCB_add_ready_queue
+        MOV R0, #6
+        BL PCB_add_ready_queue
+
+        BL PCB_remove_ready_queue
+        nop
+        BL PCB_remove_ready_queue
+        nop
 
         MOV R0, #3
-        BL PCB_push_ready_queue
-        MOV R0, #4
-        BL PCB_push_ready_queue
-        MOV R0, #5
-        BL PCB_push_ready_queue
+        BL PCB_add_ready_queue
 
         SVC		0						; Quit
 

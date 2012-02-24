@@ -23,10 +23,13 @@ PCB_MAX_TIMESLICE    EQU    0x05        ; Number of clock ticks per timeslice
 PCB_MAX_NUM          EQU    0x04        ; Maximum number of PCBs
 
 PCB_SIZE             EQU    (PCB_OFFSET_BOTTOM - PCB_record)
-;PCB_SIZE             EQU    0x80        ; Size of each PCB block
+PCB_QUEUE_NULL       EQU    0xFF
 
 e_full_queue
-        DEFB    "Error: Push to full Queue", 0
+        DEFB    "ERR Add to full Queue", 0
+        ALIGN
+e_empty_queue
+        DEFB    "ERR Remove empty Queue", 0
         ALIGN
 
 
@@ -41,7 +44,7 @@ PCB_setup
                 ADR     R0, PCB_READY_QUEUE_TAIL    ; Set ready queue tail
                 STR     R1, [R0]
 
-                MOV     R1, #0xff                   ; Set queue as empty
+                MOV     R1, #PCB_QUEUE_NULL         ; Set queue as empty
                 STR     R1, PCB_ready_queue
 
                 POP     {R0,R1}
@@ -166,13 +169,14 @@ ALIGN
 PCB_ready_queue_wrap nop                    ; If head/tail hits this, rewrite to top of queue area
 
 
-PCB_push_ready_queue
-                ;PUSH    {}
+; R0: Value to put on queue
+PCB_add_ready_queue
+                PUSH    {R1-R4}
                 LDR     R1, PCB_READY_QUEUE_HEAD
                 LDR     R2, PCB_READY_QUEUE_TAIL
 
                 CMP     R1, R2                  ; Check if queue is empty/1 element
-                BEQ     _queue_same_ptr
+                BEQ     _queue_add_same_ptr
 
 _queue_wrap_check
                 ADR     R3, PCB_ready_queue_wrap
@@ -189,14 +193,14 @@ _queue_save_new_tail                            ; R4 must point to new tail
                 ADR     R1, PCB_READY_QUEUE_TAIL; Update ptr to tail
                 STR     R4, [R1]
 
-                ;POP     {}
+                POP     {R1-R4}
                 MOV     PC, LR
 
 
-_queue_same_ptr
-                ;Check if value is 0xFF (empty) or not
+_queue_add_same_ptr
+                ;Check if value is empty or not
                 LDR     R3, [R1]
-                CMP     R3, #0xFF
+                CMP     R3, #PCB_QUEUE_NULL
 
                 BNE    _queue_wrap_check        ; 1 Item present already, continue
                                                 ; to added to queue like normal
@@ -211,78 +215,62 @@ _queue_wrap_top
                 B       _queue_save_new_tail    ; Else add element to queue_top
                                                 ; and update tail ptr
 
+; End PCB_add_ready_queue
+
+
+PCB_remove_ready_queue
+                ;PUSH    {}
+                ;Check for empty queue
+                LDR     R1, PCB_READY_QUEUE_HEAD
+                LDR     R2, PCB_READY_QUEUE_TAIL
+                CMP     R1, R2
+
+                BEQ    _queue_remove_same_ptr
+
+                LDR     R0, [R1]                ; Grab the contents of the head
+                ADD     R1, R1, #4
+                ADR     R3, PCB_ready_queue_wrap; Check to see if the new ptr
+                CMP     R1, R3                  ; overlaps the queue boundry
+                BEQ     _queue_wrap_head
+                                                ;else continue onto save
+_queue_remove_save
+                ADR     R2, PCB_READY_QUEUE_HEAD
+                STR     R1, [R2]
+
+                ;POP    {}
+                MOV     PC, LR
+
+
+_queue_remove_same_ptr
+                MOV     R3, #PCB_QUEUE_NULL
+                LDR     R0, [R1]                ; Grab the head's value
+                CMP     R0, R3                  ; Does head's value == null?
+
+                BEQ     _queue_empty_exception
+                STR     R3, [R1]                ; then replace with the null seq
+                                                ; instead of changing the head ptr
+                B       _queue_remove_save
+
+_queue_wrap_head
+                ADR     R1, PCB_ready_queue     ; Reset ptr to top of queue space
+                ADR     R2, PCB_READY_QUEUE_HEAD; and save                
+                STR     R1, [R2]
+                B       _queue_remove_save
+; End PCB_remove_ready_queue
+
+
 _queue_full_exception                           ; Print Exception & Hang (temp?)
                 ADR     R0, e_full_queue
                 BL      LCD_write_str
                 B       end
 
-
-; old code below??????????????????????????????????????????????????????
-
-                ; Queue was empty
-                STREQ   R0, [R2]                ; Store item at tail
-                BEQ     _item_added
-
-                ; Queue had 1 entry already
-                ADDNE   R2, R2, #4              ; move tail ptr down
-                ADR     R3, PCB_ready_queue_wrap
-                CMP     R2, R3                  ; Check if ptr falls off bottom
-                BEQ     _queue_add_wrap
-
-                STR     R0, [R2]                ; No wrap needed, save to new tail
-                ADR     R1, PCB_READY_QUEUE_TAIL; Update ptr to tail
-                STR     R2, [R1]
-
-
-_item_added
-                ;POP     {}
-                MOV     PC, LR
-
-_queue_add_wrap
+_queue_empty_exception                          ; Print Exception & Hang (temp?)
+                ADR     R0, e_empty_queue
+                BL      LCD_write_str
+                B       end
 
 
 
-;PCB_push_ready_queue
-                PUSH    {R1,R5}
-                ;Check for full queue
-                LDR     R1, PCB_READY_QUEUE_HEAD
-                LDR     R2, PCB_READY_QUEUE_TAIL
-
-                CMP     R1, R2                  ; Check obvious first, is the queue empty?
-                MOVEQ   R3, R1
-                BEQ     _push_ok
-                
-
-                ADD     R3, R1, #4
-                CMP     R3, R2                  ; Check if Tail = Head + 4
-
-                MVNEQ   R0, #1                  ; Return -1 for full queue
-                MOVEQ   PC, LR
-
-                ADR     R4, PCB_ready_queue_wrap
-                CMP     R3, R4                  ; Check head needs to wrap-around
-
-                ADR     R5, PCB_ready_queue
-                MOVEQ   R3, R5                  ; R3 is the new head ptr, therefore
-                                                ; if wrap-around, set as top of queue
-
-                CMPEQ   R2, R5                  ; Check if tail at top of queue
-                                                ; if it is, queue is full
-
-                MVNEQ   R0, #1                  ; Return -1 for full queue
-                MOVEQ   PC, LR
-
-                ; If here need we can place the item (R0) at the new head (R3)
-_push_ok        STR     R0, [R3]
-
-                POP     {R1,R5}
-                MOV     PC, LR
-
-PCB_pop_ready_queue
-                ;Check for empty queue
-                LDR     R0, PCB_READY_QUEUE_HEAD
-                LDR     R1, PCB_READY_QUEUE_TAIL
-                CMP     R0, R1
 
                 MVNEQ   R0, #1                  ; Return -1 for empty queue
                 MOVEQ   PC, LR
