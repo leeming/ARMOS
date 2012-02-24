@@ -154,6 +154,10 @@ start
 
         MOV R0, #3
         BL PCB_push_ready_queue
+        MOV R0, #4
+        BL PCB_push_ready_queue
+        MOV R0, #5
+        BL PCB_push_ready_queue
 
         SVC		0						; Quit
 
