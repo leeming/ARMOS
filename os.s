@@ -147,30 +147,8 @@ start
         ;Start the helloworld program first
         ADR     R0, helloworldMain
         SVC     new_process
-
-        MOV R0, #1
-        BL PCB_add_ready_queue
-BL PCB_remove_ready_queue
-BL PCB_remove_ready_queue
-
-        MOV R0, #2
-        BL PCB_add_ready_queue
-        MOV R0, #3
-        BL PCB_add_ready_queue
-        MOV R0, #4
-        BL PCB_add_ready_queue
-        MOV R0, #5
-        BL PCB_add_ready_queue
-        MOV R0, #6
-        BL PCB_add_ready_queue
-
-        BL PCB_remove_ready_queue
-        nop
-        BL PCB_remove_ready_queue
-        nop
-
-        MOV R0, #3
-        BL PCB_add_ready_queue
+        SVC     new_process
+        SVC     new_process
 
         SVC		0						; Quit
 

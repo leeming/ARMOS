@@ -118,6 +118,9 @@ PCB_create_process
                 ADR     R4, PCB_NEXT_PROC_ID    ; Grab address location
                 STR     R2, [R4]                ; Store new inc
 
+                ;Stick on ready queue
+                BL PCB_add_ready_queue
+
                 ;Set state
                 MOV     R0, #PCB_STATE_NEW      ; Set state to NEW
                 STR     R0, [R3, #PCB_OFFSET_STATE]
@@ -157,7 +160,17 @@ _pick_head_pcb
                 MOV     PC, LR
 
 
+PCB_run
+                ; Pick queue head
 
+                ; Load PCB
+
+                ; Move into user mode
+
+                ; Run code
+
+
+                MOV     PC, LR
                 
 
 
@@ -270,22 +283,6 @@ _queue_empty_exception                          ; Print Exception & Hang (temp?)
                 B       end
 
 
-
-
-                MVNEQ   R0, #1                  ; Return -1 for empty queue
-                MOVEQ   PC, LR
-
-                LDR     R2, [R0], #-4           ; Get value at head of queue & move head ptr
-
-                ADR     R3, PCB_ready_queue     ; Check to see if head ptr goes past the
-                                                ; wrap around address
-                CMP     R0, R3
-                MOVGE   PC, LR                  ; Return if not wrap around
-
-                ; If here need to correct the queue wrap around
-                ADR     R4, PCB_ready_queue_wrap
-                SUB     R4, R4, #4
-                STR     R4, [R0]
 
 PCB_total       EQU     PCB_SIZE*PCB_MAX_NUM
 PCB_offset      DEFS    PCB_total
