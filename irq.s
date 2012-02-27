@@ -16,8 +16,9 @@ irq
 			BNE		irq_btn_btm				
 			TST		r3, #BTN_ST1_PRESSED	; Check for BottomButton press
 			BNE		irq_btn_st1			
-			TST		r3, #BIT0_SET				; Check for timer tick
-			BNE		irq_clk_tick
+			TST		r3, #BIT0_SET			; Check for timer tick
+			;BNE		irq_clk_tick
+            BNE     clock_tick
 
 			BIC		r3, r3, #&FF			; Clear all IRQ vectors, since I dont
 			STRB	r3, [r4, #IRQ_SRC]		; know what they are
@@ -55,6 +56,7 @@ irq_clk_tick
 			strb	r3, [r4,#TIMER_CMP]		; Store updated timer compare
 			mov		r3, #0
 			strb	r3, [r4,#IRQ_SRC]		; Reset IRQ flags
+
 
 			add		r10, r10, #1			; Add a second (units)
 			cmp		r10, #10

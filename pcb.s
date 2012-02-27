@@ -25,12 +25,7 @@ PCB_MAX_NUM          EQU    0x04        ; Maximum number of PCBs
 PCB_SIZE             EQU    (PCB_OFFSET_BOTTOM - PCB_record)
 PCB_QUEUE_NULL       EQU    0xFF
 
-e_full_queue
-        DEFB    "ERR Add to full Queue", 0
-        ALIGN
-e_empty_queue
-        DEFB    "ERR Remove empty Queue", 0
-        ALIGN
+
 
 
 ; Few PCB setup routines to run thru before adding processes
@@ -273,12 +268,12 @@ _queue_wrap_head
 
 
 _queue_full_exception                           ; Print Exception & Hang (temp?)
-                ADR     R0, e_full_queue
+                ADRL     R0, e_full_queue
                 BL      LCD_write_str
                 B       end
 
 _queue_empty_exception                          ; Print Exception & Hang (temp?)
-                ADR     R0, e_empty_queue
+                ADRL     R0, e_empty_queue
                 BL      LCD_write_str
                 B       end
 

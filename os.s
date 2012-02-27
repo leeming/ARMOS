@@ -6,6 +6,7 @@
 
 INCLUDE params_labboard.s
 
+
         org	&0
 
 ; Set up the Exception vectors
@@ -25,6 +26,9 @@ INCLUDE params_labboard.s
         INCLUDE lib/clock.s
         INCLUDE lib/math.s
         INCLUDE lib/bcd_convert.s
+        INCLUDE lib/system.s
+
+        INCLUDE error.s
 
 
 ; Implementations of Exception vectors are handled here
@@ -34,32 +38,28 @@ reset
 			BL		LCD_clear				; Start with clear LCD
             BL      PCB_setup               ; Set up PCB
 
-B       start; temp keep in priv mode
-			; Change to IRQ mode
-			MRS 	R0, CPSR 				; Get current CPSR
-			BIC 	R0, R0, #&0F 			; Clear low order bits
-			ORR		R0,	R0, #&12			; Set IRQ mode bits
-			MSR 	CPSR_c, R0 				; Rewrite CPSR
-			NOP								; Apparently some ARM have a bug
-											; and this NOP fixes it
 
+			; Change to IRQ mode
+            MOV     R0, #MODE_IRQ
+            BL      change_mode
 			ADRL	SP, irq_stack			; Set IRQ stack pointer up		
 
 
-			; Change to FIQ mode
-			MRS 	R0, CPSR 				; Get current CPSR
-			BIC 	R0, R0, #&0F 			; Clear low order bits
-			ORR		R0,	R0, #&11			; Set FIQ mode bits
-			MSR 	CPSR_c, R0 				; Rewrite CPSR
-			NOP								; Apparently some ARM have a bug
-											; and this NOP fixes it
+            ; Change to FIQ mode
+            MOV     R0, #MODE_FIQ
+            BL      change_mode
+            ADRL    SP, fiq_stack           ; Set FIQ stack pointer up
 
-			ADRL	SP, fiq_stack			; Set FIQ stack pointer up
+
+            ; Change to Abort mode
+            MOV     R0, #MODE_ABORT
+            BL      change_mode
+            ADRL    SP, abort_stack           ; Set ABORT stack pointer up
 
 			; Enable interupts
 			MOV		r8, #IO_space			;
-			MOV		r0, #1					;
-			STRB	r0, [r8, #IRQ_EN]		;
+			MOV		r0, #0xC1					; Timer + buttons
+			STR 	r0, [r8, #IRQ_EN]		;
 
 
 
@@ -72,7 +72,7 @@ B       start; temp keep in priv mode
 			
 			ADRL	SP, usr_stack			; Set user stack pointer up
 
-nop     ; Reset reg0-9 to a known value
+        ; Reset reg0-9 to a known value
         MOV		R0, #0
         MOV		R1, #0
         MOV		R2, #0
@@ -113,14 +113,17 @@ svc_end
 			POP		{R4,R5,LR}				; Recover registers prior to SVC
 			MOVS	PC, LR					; Return back to user land
 			
-nop; code crashes and runs ?off the end? of the RAM
+; code crashes and runs ?off the end? of the RAM
 prefetch_abort
+            B       prefetch_abort_handler
+			;B		. ;end						; End program
+
+; attempt to read or write an I/O port while in user mode
+data_abort
+            B       data_abort_handler
 			B		. ;end						; End program
 
-nop; attempt to read or write an I/O port while in user mode
-data_abort
-			B		. ;end						; End program
-nop; irq
+; irq
 INCLUDE irq.s
 
 
@@ -146,6 +149,10 @@ start
 
         ;Start the helloworld program first
         ADR     R0, helloworldMain
+
+;idle loop to test irq
+B .
+
         SVC     new_process
         SVC     new_process
         SVC     new_process
@@ -162,7 +169,7 @@ on_time         DEFS     1
 ; Stacks
 
 
-;Setup usermode stack
+;Setup usermode stack : No longer needed as PCBs have own stack?
 			DEFS	100
 usr_stack
 
@@ -170,23 +177,14 @@ usr_stack
 			DEFS	100
 svr_stack
 
+;Setup abort stack
+            DEFS    100
+abort_stack
+
 ;Setup interupt stack
-			DEFS	100
+            DEFS    100
 irq_stack
 
 ;Setup fast interupt stack
 			DEFS	100
 fiq_stack
-
-
-; Switch to IRQ mode
-;			MRS 	R0, CPSR 				; Read current status
-;			BIC 	R0, R0, #&1F 			; Clear mode field
-;			ORR 	R0, R0, #&12 			; Append IRQ mode
-;			MSR 	CPSR_c, R0 				; Update CPSR
-
-; Switch from supervisor -> user mode
-;			MRS 	R0, CPSR 				; Get current CPSR
-;			BIC 	R0, R0, #&0F 			; Clear low order bits
-;			MSR 	CPSR_c, R0 				; Rewrite CPSR
-;			NOP 							; Bug fix on some ARMs
