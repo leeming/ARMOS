@@ -9,7 +9,7 @@ svc_table	DEFW	_exit					; 0 - Exits the program
             DEFW    PCB_create_process
             DEFW    LED_on
             DEFW    LED_off
-            ;DEFW    LED_toggle
+            DEFW    LED_toggle
 svc_table_end
 
 svc_unknown	ADRL	R0, svc_unknown_str		; Grab error to print out
@@ -28,6 +28,7 @@ set_lcd_cursor  EQU     6
 new_process     EQU     7
 led_on          EQU     8
 led_off         EQU     9
+led_toggle      EQU     10
 
 
 ;SVC_MAX		EQU		7						; Number of SVC routines

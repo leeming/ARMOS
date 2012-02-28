@@ -82,9 +82,34 @@ LED_off
 		  
 			;Set the bitmask for LED
 			CMP		r1, #1
-			ORREQ	r3, r3, r4 LSL #4		; RIGHT 
-			ORRNE	r3, r3, r4				; LEFT
+			ANDEQ	r3, r3, r4 LSL #4		; RIGHT
+			ANDNE	r3, r3, r4				; LEFT
 
 			STRB	r3, [r2]
 			POP		{r2,r3}
 			MOV		PC,LR
+
+LED_toggle
+            PUSH    {r2,r3}
+            MOV     r2, #IO_space
+            LDRB    r3, [r2]
+
+            ; Set the colour bit mask
+
+            CMP     r0, #0                  ; RED
+            MOVEQ   r4, #BIT2_SET
+            CMP     r0, #1                  ; AMBER
+            MOVEQ   r4, #BIT1_SET
+            CMP     r0, #2                  ; GREEN
+            MOVEQ   r4, #BIT0_SET
+            CMP     r0, #3                  ; BLUE
+            MOVEQ   r4, #BIT3_SET
+
+            ;Set the bitmask for LED
+            CMP     r1, #1
+            EOREQ   r3, r3, r4 LSL #4       ; RIGHT
+            EORNE   r3, r3, r4              ; LEFT
+
+            STRB    r3, [r2]
+            POP     {r2,r3}
+            MOV     PC,LR

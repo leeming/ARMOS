@@ -38,21 +38,6 @@ reset
 			BL		LCD_clear				; Start with clear LCD
             BL      PCB_setup               ; Set up PCB
 
-MOV R0, #0
-            PUSH    {r1,r2}
-            MOV     r1, #IO_space
-            LDRB    r2, [r1]
-            CMP     r0, #1                  ; Check if its Left(0)
-                                            ; or Right(1) blue LED
-            MOV     R2, #&44
-            ;ORR   r2,r2, #0b0000_1000        ; If Left set bit3=1
-            ;ORREQ   r2,r2, #BIT7_SET        ; If Right set bit7=1
-
-            STRB    r2, [r1]
-            POP     {r1,r2}
-
-
-
 			; Change to IRQ mode
             MOV     R0, #MODE_IRQ
             BL      change_mode

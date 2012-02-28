@@ -183,7 +183,7 @@ LCD_write_cmd
 			BL		LCD_io_wait				; Do spinloop until ready
 
 			MOV		r1, #IO_space
-			LDR 	r2, [r0, #PIO_B]
+			LDR 	r2, [r1, #PIO_B]
 			AND		r2, r2, #0b11111001     ; Set R/W=0 & RS=0
 			EOR 	r2, r2, #0b00000000     ;
 
