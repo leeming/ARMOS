@@ -7,6 +7,10 @@
 ;                                                   ;
 ;---------------------------------------------------; 
 
+helloString
+        DEFB    "Hello World!", 0
+        ALIGN
+
 helloworldStart
         nop
 
@@ -14,13 +18,5 @@ helloworldMain
         ADR r0, helloString
         SVC print_str
 
-        B helloworldEnd
 
 
-
-helloworldEnd   B .
-
-
-helloString
-        DEFB    "Hello World!", 0
-        ALIGN

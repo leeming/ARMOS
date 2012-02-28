@@ -145,6 +145,8 @@ INCLUDE pcb.s
 ;-------------------------------------------------------------------			
 
 INCLUDE user_progs/helloworld.s
+MOV PC, LR
+
 INCLUDE user_progs/counter.s
 INCLUDE user_progs/testPrintDigit.s
 INCLUDE user_progs/flashy.s
@@ -153,15 +155,13 @@ INCLUDE user_progs/flashy.s
 
 ;Start the user programs here
 start
-        B  helloworldStart
-        ;B flashyStart
+        BL  helloworldStart
+;        B flashyStart
 
 
         ;Start the helloworld program first
         ADR     R0, helloworldMain
 
-;idle loop to test irq
-B .
 
 
 

@@ -37,4 +37,7 @@ SVC_MAX			EQU	(svc_table_end-svc_table)
 
 ;Temp
 end
-_exit		B .
+_exit           MOV R0, #123
+                MOV R1, #IO_space
+                STR R0, [R1, #HALT]
+                B .                             ; Shouldnt get here, but just incasE?
