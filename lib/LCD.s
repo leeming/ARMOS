@@ -119,7 +119,9 @@ _lcdiowait
 LCD_write_char
 			PUSH 	{r1-r3,LR}                ; Make sure we preserve these reg
 			;MOV r5, r0                  ; Make a copy of the arg
-			
+
+            BL      LED_de                  ; Disable & save current LEDs
+
 			BL		LCD_io_wait				; Do spinloop until ready
 
 			MOV		r1, #IO_space
@@ -134,6 +136,8 @@ LCD_write_char
 			STR 	r3, [r1, #PIO_B]        
 			AND 	r3, r3, #0b11111110     ; Set E=0
 			STR 	r3, [r1, #PIO_B]
+
+            BL      LED_en                  ; Reenable & load saved LEDs
 			
 			POP 	{r1-r3,LR}
 			MOV 	PC, LR                 ; Return back to print_str
@@ -180,6 +184,8 @@ _print_str_end
 LCD_write_cmd
 			PUSH 	{r1,r2,LR}              ; Make sure we preserve these reg
 
+            BL      LED_de                  ; Disable & save current LEDs
+
 			BL		LCD_io_wait				; Do spinloop until ready
 
 			MOV		r1, #IO_space
@@ -194,7 +200,9 @@ LCD_write_cmd
 			STR 	r2, [r1, #PIO_B]
 			AND 	r2, r2, #0b11111110     ; Set E=0
 			STR 	r2, [r1, #PIO_B]
-			
+
+            BL      LED_en                  ; Reenable & load saved LEDs
+		
 			POP 	{r1,r2,LR}
 			MOV 	PC, LR                 ; Return back to print_str
 

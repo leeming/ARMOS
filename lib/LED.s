@@ -113,3 +113,46 @@ LED_toggle
             STRB    r3, [r2]
             POP     {r2,r3}
             MOV     PC,LR
+
+;-------
+; Enable LEDs while recovering their state
+;-------
+LED_en
+            PUSH    {R0-R2}
+            ; Enable LED
+            MOV     R0, #BIT4_SET
+            MOV     R1, #IO_space
+            LDRB    R2, [R1, #PIO_B]
+            ORR     R0, R0, R2
+            STR     R0, [R1, #PIO_B]
+
+            ; Recover state
+            LDRB    R0, LED_saved_state
+            STRB    R0, [R1]
+
+            POP     {R0-R2}
+            MOV     PC, LR
+
+
+;-------
+; Enable LEDs while saving their state
+;-------
+LED_de
+            PUSH    {R0-R2}
+            ; disable LED
+            MOV     R0, #BIT4_USET
+            MOV     R1, #IO_space
+            LDRB    R2, [R1, #PIO_B]
+            AND     R0, R0, R2
+            STR     R0, [R1, #PIO_B]
+
+            ; Save state
+            LDRB    R0, [R1, #PIO_A]
+            STRB    R0, LED_saved_state
+
+            POP     {R0-R2}
+            MOV     PC, LR
+
+
+
+LED_saved_state     DEFW    0

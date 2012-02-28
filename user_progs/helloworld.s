@@ -7,6 +7,9 @@
 ;                                                   ;
 ;---------------------------------------------------; 
 
+helloworldStart
+        nop
+
 helloworldMain
         ADR r0, helloString
         SVC print_str
