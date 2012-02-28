@@ -3,46 +3,50 @@
 CLOCK_TICK     DEFW   0         ; Number of ticks since start
 CLOCK_TICK_LEN DEFW   100       ; Number of ms per tick
 
+CLOCK_BIG_TICK      DEFW    0
+CLOCK_BIG_TICK_LEN  DEFW    100
 
 
 clock_tick
-            BIC     R3, R3, #TIMER          ; Clear bit so we know it has been serviced
-            STRB    R3, [R4, #IRQ_SRC]
-            LDRB     R3, [R4,#TIMER_CMP]     ; Load the timer compare
-            ADD     R3, R3, #CLOCK_TICK_LEN
-            STRB     R3, [R4,#TIMER_CMP]     ; Store updated timer compare
-            MOV     R3, #0
-            STRB    R3, [R4,#IRQ_SRC]       ; Reset IRQ flags
+        PUSH    {R3-R6}
+        BIC     R3, R3, #TIMER          ; Clear bit so we know it has been serviced
+        STRB    R3, [R4, #IRQ_SRC]
+        LDRB    R3, [R4,#TIMER_CMP]     ; Load the timer compare
+        ADD     R3, R3, #CLOCK_TICK_LEN
+        STRB    R3, [R4,#TIMER_CMP]     ; Store updated timer compare
+        MOV     R3, #0
+        STRB    R3, [R4,#IRQ_SRC]       ; Reset IRQ flags
 
         ; Add one to tick counter
         ADR     R2, CLOCK_TICK
         LDR     R3, [R2]
         ADD     R3, R3, #1
+
+        ADR     R4, CLOCK_BIG_TICK_LEN
+        LDR     R5, [R4]
+
+        CMP     R3, R5                  ; Check to see if big tick happens
+        MOVEQ   R3, #0                  ; Yes, reset small tick
         STR     R3, [R2]
 
-        ;Hacky way to scale timer
-        ADD     R10, R10, #1
-        CMP     R10, #0x1F
-        BLT     irq_end
-
-        MOV     R10, #0
-        CMP     R11, #0
-
-        MOVEQ   R11, #1
-        MOVEQ   R0, #1
-        BEQ     LED_blue_on
-
-        MOVNE   R11, #0
-        MOVNE   R0, #1
-        BNE     LED_blue_on
-
+        PUSH    {LR}
+        BLEQ    _do_big_tick
+        POP     {LR}
 
         ; Should we do anything on this tick?
         ; TODO
 
+
+        POP     {R3-R6}
         B       irq_end
 
+_do_big_tick
+        ADR     R4, CLOCK_BIG_TICK
+        LDR     R5, [R4]
+        ADD     R5, R5, #1
+        STR     R5, [R4]
 
+        MOV     PC, LR
 
 
 

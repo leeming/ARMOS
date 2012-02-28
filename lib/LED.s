@@ -39,7 +39,7 @@ LED_blue_off
 ; R0 = Colour
 ; R1 = Side
 LED_on	
-			PUSH	{r2,r3}
+			PUSH	{r2,r3,r4}
 			MOV		r2, #IO_space
 			LDRB	r3, [r2]
 
@@ -60,7 +60,7 @@ LED_on
 			ORRNE	r3, r3, r4				; LEFT
 
 			STRB	r3, [r2]
-			POP		{r2,r3}
+			POP		{r2,r3,r4}
 			MOV		PC,LR
 
 

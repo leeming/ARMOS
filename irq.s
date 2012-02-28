@@ -5,7 +5,7 @@
 ;------------------------------------------------------------------- 
 
 irq
-			push	{r3,r4,r5}
+			push	{r0-r14}
 
 			mov		r4, #IO_space			; Grab the IRQ number
 			ldrb	r3, [r4,#IRQ_SRC]		; 	
@@ -28,16 +28,18 @@ irq_btn_top
 			BIC		r3, r3, #BTN_TOP		; Clear bit so we know it has been serviced
 			STRB	r3, [r4, #IRQ_SRC]
 			PUSH	{r0}
-			MOV		r0, #&30
-			SVC		print_char
+
+            MOV     R0, #0
+            BL LED_blue_on
+
 			POP		{r0}
 			B		irq_end
 irq_btn_btm
 			BIC		r3, r3, #BTN_BOTTOM		; Clear bit so we know it has been serviced
 			STRB	r3, [r4, #IRQ_SRC]
 			PUSH	{r0}
-			MOV		r0, #&31
-			SVC		print_char
+            MOV     R0, #0
+            BL LED_blue_off
 			POP		{r0}
 			B		irq_end
 irq_btn_st1
@@ -66,7 +68,7 @@ irq_clk_tick
 
 			B		irq_end
 irq_end
-			pop		{r3,r4,r5}
+			pop		{r0-r14}
 			subs	pc, lr, #4
 
 
