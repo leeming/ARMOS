@@ -6,23 +6,23 @@
 ;                                                   ;
 ;---------------------------------------------------;  
 
-flashyStart
+flashy2Start
                 MOV     R0, #0      ; Red LED
-                MOV     R1, #0      ; Left hand side
+                MOV     R1, #1      ; Right hand side
 
                 MOV     R2, #0
-flashyMain
+flashy2Main
                 
 
 
-                MOV     R3, #0x3F000
-_flashy_subLoop SUB     R3, R3, #1
+                MOV     R3, #0x1F000
+_flashy2_subLoop SUB     R3, R3, #1
                 CMP     R3, #0
-                BNE _flashy_subLoop
+                BNE _flashy2_subLoop
 
                 SVC     led_toggle
 
- B flashyMain
+ B flashy2Main
 
                 CMP     R2, #0
                 MOVEQ   R2, #1
@@ -31,4 +31,4 @@ _flashy_subLoop SUB     R3, R3, #1
                 SVCNE   led_off
 
 
-                B flashyMain
+                B flashy2Main

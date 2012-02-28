@@ -29,8 +29,9 @@ irq_btn_top
 			STRB	r3, [r4, #IRQ_SRC]
 			PUSH	{r0}
 
-            MOV     R0, #0
-            BL LED_blue_on
+            MOV     R0, #3
+            MOV     R1, #0
+            BL LED_toggle
 
 			POP		{r0}
 			B		irq_end
@@ -38,8 +39,11 @@ irq_btn_btm
 			BIC		r3, r3, #BTN_BOTTOM		; Clear bit so we know it has been serviced
 			STRB	r3, [r4, #IRQ_SRC]
 			PUSH	{r0}
-            MOV     R0, #0
-            BL LED_blue_off
+
+            MOV     R0, #3
+            MOV     R1, #1
+            BL LED_toggle
+
 			POP		{r0}
 			B		irq_end
 irq_btn_st1

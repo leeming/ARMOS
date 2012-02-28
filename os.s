@@ -38,10 +38,10 @@ reset
 			BL		LCD_clear				; Start with clear LCD
             BL      PCB_setup               ; Set up PCB
 
+            BL      LED_en                  ; Enable LEDs
+            BL      LED_clear               ; Clear all LEDs
 
-BL  LED_de
-NOP;FF stored?
-BL  LED_en
+
 
 			; Change to IRQ mode
             MOV     R0, #MODE_IRQ
@@ -150,17 +150,14 @@ MOV PC, LR
 INCLUDE user_progs/counter.s
 INCLUDE user_progs/testPrintDigit.s
 INCLUDE user_progs/flashy.s
+INCLUDE user_progs/flashy2.s
 
 
 
 ;Start the user programs here
 start
         BL  helloworldStart
-;        B flashyStart
-
-
-        ;Start the helloworld program first
-        ADR     R0, helloworldMain
+        B flashy2Start
 
 
 
