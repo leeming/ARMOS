@@ -27,22 +27,36 @@ PCB_QUEUE_NULL       EQU    0xFF
 
 
 
+PCB_SPARE_BLOCK_QUEUE   DEFS    QUEUE_record_size
+ALIGN
+PCB_READY_QUEUE         DEFS    QUEUE_record_size
+ALIGN
 
-; Few PCB setup routines to run thru before adding processes
+
+
+; Few PCB manager setup routines to run thru before adding processes
 PCB_setup
-                PUSH    {R0,R1}
+                PUSH    {R0,R1,LR}
 
-                ADR     R0, PCB_READY_QUEUE_HEAD    ; Set ready queue head
-                ADR     R1, PCB_ready_queue
-                STR     R1, [R0]
+                ; Set up spare blocks queue
+                ADR     R0, PCB_SPARE_BLOCK_QUEUE
+                BL      QUEUE_init
+                MOV     R1, R0
+                MOV     R0, #PCB_MAX_NUM
+                SUB     R0, R0, #1
 
-                ADR     R0, PCB_READY_QUEUE_TAIL    ; Set ready queue tail
-                STR     R1, [R0]
+_setup_loop     BL      QUEUE_add
+                SUB     R0, R0, #1
+                CMP     R0, #0
+                BGE     _setup_loop
 
-                MOV     R1, #PCB_QUEUE_NULL         ; Set queue as empty
-                STR     R1, PCB_ready_queue
 
-                POP     {R0,R1}
+                ; Set up ready queue
+                ADR     R0, PCB_READY_QUEUE
+                BL      QUEUE_init
+                
+
+                POP     {R0,R1,LR}
                 MOV     PC, LR
 
 
@@ -53,7 +67,7 @@ PCB_save_reg
 
                 ; Change to SYSTEM mode
                 MRS     R0, CPSR                ; Get current CPSR
-                BIC     R0, R0, #&0F            ; Clear low order bits
+                BIC     R0, R0, #MODE_BITMASK   ; Clear low order bits
                 ORR     R0, R0, #MODE_SYSTEM    ; Set SYSTEM mode bits
                 MSR     CPSR_c, R0              ; Rewrite CPSR
                 NOP                             ; Apparently some ARM have a bug
@@ -64,7 +78,7 @@ PCB_save_reg
                 MOV     R1, #PCB_SIZE
                 ADR     R2, PCB_offset          ; Get offset address of PCB
                 MUL     R1, R1, R0              ; Offset per PCB block
-                ADD     R14, R1, R2             ; R13svc is now the base address for the PCB
+                ADD     R14, R1, R2             ; R14svc is now the base address for the PCB
                                                 ; R0 , R1 and R2  no long needed
 
                 ADD     R14, R14, #PCB_OFFSET_REG ;Address to store to
@@ -82,6 +96,10 @@ PCB_load_reg
                 MUL     R1, R1, R0              ; Offset per PCB block
                 ADD     R3, R1, R2              ; R13svc is now the base address for the PCB
                                                 ; R0 , R1 and R2  no long needed
+
+                ;LDR     SP  [R3, #PCB_OFFSET_PC]; SP is now being used as a temp
+                                                ; reg to hold the process PC
+
                 ADD     R3, R3, #PCB_OFFSET_REG ;Address to load from
                 LDMIA   R3, {R0-R12}            ; Load all reg
 
@@ -95,11 +113,13 @@ PCB_create_process
 
 
                 ;Find next available PCB block
-                BL      _PCB_find_next_avil
+                ADR     R1, PCB_SPARE_BLOCK_QUEUE
+                BL      QUEUE_remove
+;                BL      _PCB_find_next_avil
 
                 ;Calculate block offset
                 ;MOV     R1, #PCB_SIZE
-                ;MOV     R1,  #(PCB_OFFSET_BOTTOM - PCB_RECORD) / 4
+                MOV     R1,  #PCB_OFFSET_BOTTOM
                 MUL     R1, R1, R0              ; Offset from 'PCB_offset'
 
                 ;Set process ID
@@ -114,7 +134,8 @@ PCB_create_process
                 STR     R2, [R4]                ; Store new inc
 
                 ;Stick on ready queue
-                BL PCB_add_ready_queue
+                ADR     R1, PCB_READY_QUEUE
+                BL      QUEUE_add
 
                 ;Set state
                 MOV     R0, #PCB_STATE_NEW      ; Set state to NEW
@@ -156,128 +177,40 @@ _pick_head_pcb
 
 
 PCB_run
+                PUSH    {R1, LR}    ;Do i actually want this? since this is exited via IRQ [wrong stack]
                 ; Pick queue head
+                ADR R1, PCB_READY_QUEUE
+                BL  QUEUE_remove
+
+                ADR R2, PCB_CURRENT_ID
+                STR R0, [R2]
+
+                ; Save supervisor SP and use it as a temp reg to hold new PC
+                ADR R1, PCB_saved_sp
+                STR SP, [R1]
 
                 ; Load PCB
+                BL PCB_load_reg
 
-                ; Move into user mode
+                ; Move into user mode (not using change_mode routine as we
+                ; need to preserve regs [use LR as temp reg])
+                MRS     LR, CPSR                ; Get current CPSR
+                BIC     LR, LR, #MODE_BITMASK   ; Clear low order bits
+                ORR     LR, LR, #MODE_USER      ; Set mode bits
+                MSR     CPSR_c, LR              ; Rewrite CPSR
+                NOP
+
+
 
                 ; Run code
 
-
-                MOV     PC, LR
-                
-
-
-; Ready queue for all runnable PCBs
-PCB_READY_QUEUE_HEAD DEFW   0x00
-PCB_READY_QUEUE_TAIL DEFW   0x00
-PCB_ready_queue      DEFS  PCB_MAX_NUM*4, 0    ;The actual queue area
-ALIGN
-PCB_ready_queue_wrap nop                    ; If head/tail hits this, rewrite to top of queue area
-
-
-; R0: Value to put on queue
-PCB_add_ready_queue
-                PUSH    {R1-R4}
-                LDR     R1, PCB_READY_QUEUE_HEAD
-                LDR     R2, PCB_READY_QUEUE_TAIL
-
-                CMP     R1, R2                  ; Check if queue is empty/1 element
-                BEQ     _queue_add_same_ptr
-
-_queue_wrap_check
-                ADR     R3, PCB_ready_queue_wrap
-                ADD     R4, R2, #4              ; R4 = Tail + 4
-                CMP     R3, R4                  ; Wrap point == New tail?
-                BEQ     _queue_wrap_top
-
-                CMP     R4, R1                  ; Head == New tail?
-                BEQ     _queue_full_exception
-
-
-_queue_save_new_tail                            ; R4 must point to new tail
-                STR     R0, [R4]                ; Store item at new tail
-                ADR     R1, PCB_READY_QUEUE_TAIL; Update ptr to tail
-                STR     R4, [R1]
-
-                POP     {R1-R4}
                 MOV     PC, LR
 
-
-_queue_add_same_ptr
-                ;Check if value is empty or not
-                LDR     R3, [R1]
-                CMP     R3, #PCB_QUEUE_NULL
-
-                BNE    _queue_wrap_check        ; 1 Item present already, continue
-                                                ; to added to queue like normal
-
-                MOV     R4, R1                  ; Else add first element at head (==tail)
-                B       _queue_save_new_tail  
-
-_queue_wrap_top
-                ADR     R4, PCB_ready_queue     ; Grab addr of queue_top
-                CMP     R1, R4                  ; New tail == head?
-                BEQ     _queue_full_exception
-                B       _queue_save_new_tail    ; Else add element to queue_top
-                                                ; and update tail ptr
-
-; End PCB_add_ready_queue
+PCB_irq                
 
 
-PCB_remove_ready_queue
-                ;PUSH    {}
-                ;Check for empty queue
-                LDR     R1, PCB_READY_QUEUE_HEAD
-                LDR     R2, PCB_READY_QUEUE_TAIL
-                CMP     R1, R2
-
-                BEQ    _queue_remove_same_ptr
-
-                LDR     R0, [R1]                ; Grab the contents of the head
-                ADD     R1, R1, #4
-                ADR     R3, PCB_ready_queue_wrap; Check to see if the new ptr
-                CMP     R1, R3                  ; overlaps the queue boundry
-                BEQ     _queue_wrap_head
-                                                ;else continue onto save
-_queue_remove_save
-                ADR     R2, PCB_READY_QUEUE_HEAD
-                STR     R1, [R2]
-
-                ;POP    {}
-                MOV     PC, LR
-
-
-_queue_remove_same_ptr
-                MOV     R3, #PCB_QUEUE_NULL
-                LDR     R0, [R1]                ; Grab the head's value
-                CMP     R0, R3                  ; Does head's value == null?
-
-                BEQ     _queue_empty_exception
-                STR     R3, [R1]                ; then replace with the null seq
-                                                ; instead of changing the head ptr
-                B       _queue_remove_save
-
-_queue_wrap_head
-                ADR     R1, PCB_ready_queue     ; Reset ptr to top of queue space
-                ADR     R2, PCB_READY_QUEUE_HEAD; and save                
-                STR     R1, [R2]
-                B       _queue_remove_save
-; End PCB_remove_ready_queue
-
-
-_queue_full_exception                           ; Print Exception & Hang (temp?)
-                ADRL     R0, e_full_queue
-                BL      LCD_write_str
-                B       end
-
-_queue_empty_exception                          ; Print Exception & Hang (temp?)
-                ADRL     R0, e_empty_queue
-                BL      LCD_write_str
-                B       end
-
-
+PCB_saved_sp    DEFW    1
 
 PCB_total       EQU     PCB_SIZE*PCB_MAX_NUM
 PCB_offset      DEFS    PCB_total
+PCB_offset_end  NOP

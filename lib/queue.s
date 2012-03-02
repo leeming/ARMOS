@@ -2,17 +2,9 @@ QUEUE_record            RECORD
 QUEUE_head              WORD
 QUEUE_tail              WORD
 QUEUE_area              WORD    10  ; Number of items allowed in queue (extend if needed?)
-QUEUE_record_end        WORD
+QUEUE_record_size       WORD
 
 QUEUE_null              EQU    0xFF
-
-
-
-QUEUE_SPARE_PCB_BLOCK   DEFS    QUEUE_record_end
-ALIGN
-QUEUE_PCB_READY         DEFS    QUEUE_record_end
-ALIGN
-
 
 
 ; Init a queue
@@ -48,7 +40,7 @@ QUEUE_add
                 BEQ     _queue_add_same_ptr
 
 _queue_wrap_check
-                ADD     R5, R1, #QUEUE_record_end
+                ADD     R5, R1, #QUEUE_record_size
                 ADD     R6, R4, #4              ; R6 = Tail + 4
                 CMP     R5, R6                  ; Wrap point == New tail?
                 BEQ     _queue_wrap_top
@@ -99,7 +91,7 @@ QUEUE_remove
 
                 LDR     R0, [R2]                ; Grab the contents of the head
                 ADD     R2, R2, #4
-                ADD     R4, R1, #QUEUE_record_end; Check to see if the new ptr
+                ADD     R4, R1, #QUEUE_record_size; Check to see if the new ptr
                 CMP     R2, R4                  ; overlaps the queue boundry
                 BEQ     _queue_wrap_head
                                                 ;else continue onto save

@@ -27,6 +27,7 @@ INCLUDE params_labboard.s
         INCLUDE lib/math.s
         INCLUDE lib/bcd_convert.s
         INCLUDE lib/system.s
+        INCLUDE lib/queue.s
 
         INCLUDE error.s
 
@@ -66,6 +67,8 @@ reset
 			STR 	r0, [r8, #IRQ_EN]		;
 
 
+; dont change into user mode for now
+B start
 
 			; Change to user mode
 			MRS 	R0, CPSR 				; Get current CPSR
@@ -156,9 +159,13 @@ INCLUDE user_progs/flashy2.s
 
 ;Start the user programs here
 start
-        BL  helloworldStart
-        B flashy2Start
+        ADR     R0, helloworldStart
+        BL      PCB_create_process
 
+        ADR     R0, flashyStart
+        BL      PCB_create_process
+
+        BL      PCB_run
 
 
 
