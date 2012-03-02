@@ -54,6 +54,8 @@ irq_btn_st1
 			SVC		print_char
 			POP		{r0}
 			B		irq_end
+
+; Deprecated - see lib/clock.s
 irq_clk_tick
 			BIC		r3, r3, #TIMER		; Clear bit so we know it has been serviced
 			STRB	r3, [r4, #IRQ_SRC]
