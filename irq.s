@@ -17,8 +17,8 @@ irq
 			TST     R1, #BTN_BOTTOM			; Check for BottomButton press
 			BNE		irq_btn_btm
 
-			TST     R1, #BTN_ST1_PRESSED	; Check for BottomButton press
-			BNE		irq_btn_st1
+;			TST     R1, #BTN_ST1_PRESSED	; Check for STButton press
+;			BNE		irq_btn_st1
 
 			TST     R1, #BIT0_SET			; Check for timer tick
             BNE     clock_tick
@@ -34,8 +34,8 @@ irq_btn_top
 
             MOV     R0, #3
             MOV     R1, #0
-            BL LED_toggle
-
+            BL      LED_toggle
+            BL      irq_btn_debounce
 			POP		{R0}
 			B		irq_end
 irq_btn_btm
@@ -46,6 +46,7 @@ irq_btn_btm
             MOV     R0, #3
             MOV     R1, #1
             BL      LED_toggle
+            BL      irq_btn_debounce
             POP     {R1, R2}
 
 			B		irq_end
@@ -60,6 +61,16 @@ irq_btn_st1
 
             B		irq_end
 
+irq_btn_debounce
+            PUSH    {R0}
+            MOV     R0, #&FF0
+_debounce_loop
+            SUB     R0, R0, #1
+            CMP     R0, #0
+            BNE     _debounce_loop
+
+            POP     {R0}
+            MOV     PC, LR
 
 irq_end
 			POP     {R0-R1,LR}

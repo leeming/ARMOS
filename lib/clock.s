@@ -2,7 +2,7 @@ CLOCK_TICK          DEFW   0            ; Number of ticks since start
 CLOCK_TICK_LEN      DEFW   100          ; Number of ms per tick
 
 CLOCK_BIG_TICK      DEFW    0
-CLOCK_BIG_TICK_LEN  DEFW    40
+CLOCK_BIG_TICK_LEN  DEFW    1;40
 
 
 ;-------------------

@@ -289,10 +289,25 @@ PCB_run
                 POP     {PC}
 
 PCB_irq
+                ; Add previous process to back of ready queue
+                PUSH    {R0,R1}
+                ADR     R1, PCB_CURRENT_ID
+                LDR     R0, [R1]
+                ADR     R1, PCB_READY_QUEUE
+                BL      QUEUE_add
+                POP     {R0,R1}
 
+                ; Save off process' reg
                 BL      PCB_save_reg
                 BL      PCB_save_special_reg
 
+                ; Get next process to switch in & update CURRENT_ID flag
+                ADR     R1, PCB_READY_QUEUE
+                BL      QUEUE_remove
+                ADR     R1, PCB_CURRENT_ID
+                STR     R0, [R1]
+
+                ; Load in next process' reg
                 BL      PCB_load_special_reg
                 BL      PCB_load_reg
 

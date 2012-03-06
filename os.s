@@ -158,6 +158,7 @@ INCLUDE user_progs/counter.s
 INCLUDE user_progs/testPrintDigit.s
 INCLUDE user_progs/flashy.s
 INCLUDE user_progs/flashy2.s
+INCLUDE user_progs/flashy3.s
 
 
 
@@ -166,8 +167,16 @@ start
         ;ADR     R0, helloworldStart
         ;BL      PCB_create_process
 
-        ADR     R0, flashyStart
+        ;ADR     R0, flashyStart
+       ; BL      PCB_create_process
+
+
+        ADR     R0, flashy3Start
         BL      PCB_create_process
+
+        ADR     R0, flashy2Start
+        BL      PCB_create_process
+
 
         BL      PCB_run
 
