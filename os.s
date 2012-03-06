@@ -61,11 +61,15 @@ reset
             BL      change_mode
             ADRL    SP, abort_stack           ; Set ABORT stack pointer up
 
-			; Enable interupts
-			MOV		r8, #IO_space			;
-			MOV		r0, #0xC1					; Timer + buttons
-			STR 	r0, [r8, #IRQ_EN]		;
+            ; Change to System mode
+            MOV     R0, #MODE_SYSTEM 
+            BL      change_mode
+            ADRL    SP, usr_stack   
 
+            ; Enable interupts
+            MOV     r8, #IO_space           ;
+            MOV     r0, #0xC1               ; Timer + buttons
+            STR     r0, [r8, #IRQ_EN]       ;
 
 ; dont change into user mode for now
 B start
@@ -159,8 +163,8 @@ INCLUDE user_progs/flashy2.s
 
 ;Start the user programs here
 start
-        ADR     R0, helloworldStart
-        BL      PCB_create_process
+        ;ADR     R0, helloworldStart
+        ;BL      PCB_create_process
 
         ADR     R0, flashyStart
         BL      PCB_create_process

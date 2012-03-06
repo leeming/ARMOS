@@ -10,8 +10,10 @@ PCB_record          RECORD
 PCB_OFFSET_ID       WORD
 PCB_OFFSET_STATE    WORD
 PCB_OFFSET_PC       WORD
-PCB_OFFSET_REG      WORD    14
+PCB_OFFSET_REG      WORD    13
 PCB_OFFSET_SP       WORD
+PCB_OFFSET_LR       WORD
+PCB_OFFSET_CPSR     WORD
                     WORD    99
 PCB_OFFSET_STACK    WORD   
 PCB_OFFSET_BOTTOM   WORD
@@ -60,30 +62,32 @@ _setup_loop     BL      QUEUE_add
                 MOV     PC, LR
 
 
+
 PCB_save_reg
+                POP     {R2-R5}                 ; Do a bit of stack shuffling
+                POP     {R0-R1}
+
                 PUSH    {LR}                    ; Keep a copy of LR since we are going
                                                 ; to use this as a tmp register
-                PUSH    {R0-R2}
 
-                ; Change to SYSTEM mode
-                MRS     R0, CPSR                ; Get current CPSR
-                BIC     R0, R0, #MODE_BITMASK   ; Clear low order bits
-                ORR     R0, R0, #MODE_SYSTEM    ; Set SYSTEM mode bits
-                MSR     CPSR_c, R0              ; Rewrite CPSR
-                NOP                             ; Apparently some ARM have a bug
-                                                ; and this NOP fixes it
+                PUSH    {R0-R2}                 ; Stick these on top of the stack
+
+
 
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID      
                 MOV     R1, #PCB_SIZE
                 ADR     R2, PCB_offset          ; Get offset address of PCB
                 MUL     R1, R1, R0              ; Offset per PCB block
-                ADD     R14, R1, R2             ; R14svc is now the base address for the PCB
-                                                ; R0 , R1 and R2  no long needed
+                ADD     LR, R1, R2              ; LR is now the base address for the PCB
 
-                ADD     R14, R14, #PCB_OFFSET_REG ;Address to store to
+                                                ; R0 , R1 and R2  no long needed
                 POP     {R0-R2}                 ; Recover user reg before storing
-                STMIA   R14!, {R0-R13,PC}       ; Store all reg to R14 pointer
+                                           
+
+                ADD     LR, LR, #PCB_OFFSET_REG ;Address to store to
+
+                STMIA   LR!, {R0-R12}           ; Store all reg to LR pointer
 
                 POP     {LR}                    ; Recover the original LR
                 MOV     PC, LR
@@ -94,16 +98,74 @@ PCB_load_reg
                 MOV     R1, #PCB_SIZE
                 ADR     R2, PCB_offset          ; Get offset address of PCB
                 MUL     R1, R1, R0              ; Offset per PCB block
-                ADD     R3, R1, R2              ; R13svc is now the base address for the PCB
-                                                ; R0 , R1 and R2  no long needed
+                ADD     R3, R1, R2              ; R3 is now the base address for the PCB
 
-                ;LDR     SP  [R3, #PCB_OFFSET_PC]; SP is now being used as a temp
-                                                ; reg to hold the process PC
-
-                ADD     R3, R3, #PCB_OFFSET_REG ;Address to load from
+                ADD     R3, R3, #PCB_OFFSET_REG ; Address to load from
                 LDMIA   R3, {R0-R12}            ; Load all reg
 
                 MOV     PC, LR
+
+PCB_save_special_reg
+                ;Load base address of current active PCB
+                LDR     R0, PCB_CURRENT_ID
+                MOV     R1, #PCB_SIZE
+                ADR     R2, PCB_offset          ; Get offset address of PCB
+                MUL     R1, R1, R0              ; Offset per PCB block
+                ADD     R3, R1, R2              ; R3 is now the base address for the PCB
+
+                ; Save user_sp and user_lr
+                ADD     R4, R3, #PCB_OFFSET_SP
+                STMIA   R4, {SP,LR}^
+
+                ; Save user_pc
+                POP     {R5}
+                STR     R5, [R3, #PCB_OFFSET_PC]
+
+                ; Save user_cpsr(SPSR)
+                MRS     R5, SPSR
+                STR     R5, [R3, #PCB_OFFSET_CPSR]
+
+                MOV     PC, LR
+
+
+PCB_load_special_reg
+                ;Load base address of current active PCB
+                LDR     R0, PCB_CURRENT_ID
+                MOV     R1, #PCB_SIZE
+                ADR     R2, PCB_offset          ; Get offset address of PCB
+                MUL     R1, R1, R0              ; Offset per PCB block
+                ADD     R3, R1, R2              ; R3 is now the base address for the PCB
+
+                ; Load user_sp and user_lr
+                ADD     R4, R3, #PCB_OFFSET_SP
+                LDMIA   R4, {SP,LR}^
+
+                ; Load user_pc
+                LDR     R5, [R3, #PCB_OFFSET_PC]
+                PUSH    {R5}
+
+                ; Save user_cpsr(SPSR)
+                LDR     R5, [R3, #PCB_OFFSET_CPSR]
+                MSR     SPSR, R5
+
+                MOV     PC, LR
+
+PCB_load_pc
+                PUSH    {R0-R1}
+
+                ;Load base address of current active PCB
+                LDR     R0, PCB_CURRENT_ID
+                MOV     R1, #PCB_SIZE
+                MUL     R1, R1, R0              ; Offset per PCB block
+                ADR     R0, PCB_offset          ; Get offset address of PCB
+                ADD     R1, R1, R0              ; R1 is now the base address for the PCB
+
+                ADD     R1, R1, #PCB_OFFSET_PC  ; Address to load from
+                LDR     LR, [R1]                ; User_PC now stored in SVC_LR
+
+                POP     {R0-R1}                 ; Get our user reg back
+                MOV     PC, LR
+
 
 ; R0 is the start address of the program
 PCB_create_process
@@ -177,7 +239,6 @@ _pick_head_pcb
 
 
 PCB_run
-                PUSH    {R1, LR}    ;Do i actually want this? since this is exited via IRQ [wrong stack]
                 ; Pick queue head
                 ADR R1, PCB_READY_QUEUE
                 BL  QUEUE_remove
@@ -185,28 +246,58 @@ PCB_run
                 ADR R2, PCB_CURRENT_ID
                 STR R0, [R2]
 
-                ; Save supervisor SP and use it as a temp reg to hold new PC
-                ADR R1, PCB_saved_sp
-                STR SP, [R1]
-
-                ; Load PCB
-                BL PCB_load_reg
-
-                ; Move into user mode (not using change_mode routine as we
-                ; need to preserve regs [use LR as temp reg])
+                ; Move into System mode
                 MRS     LR, CPSR                ; Get current CPSR
                 BIC     LR, LR, #MODE_BITMASK   ; Clear low order bits
-                ORR     LR, LR, #MODE_USER      ; Set mode bits
+                ORR     LR, LR, #MODE_SYSTEM    ; Set mode bits
                 MSR     CPSR_c, LR              ; Rewrite CPSR
                 NOP
 
+                ;Load base address of current active PCB
+                LDR     R0, PCB_CURRENT_ID
+                MOV     R1, #PCB_SIZE
+                MUL     R1, R1, R0              ; Offset per PCB block
+                ADR     R0, PCB_offset          ; Get offset address of PCB
+                ADD     R1, R1, R0              ; R1 is now the base address for the PCB
+
+                ; Get stack
+                ADD     R2, R1, #PCB_OFFSET_SP
+                LDR     SP, [R2]
+                ADD     SP, SP, R1              ; SP is saved as an offset, so make abs
+
+                ; Get user PC
+                ADD     R2, R1, #PCB_OFFSET_PC  ; Address to load from
+                LDR     R0, [R2]                ; User_PC now stored in R0
 
 
-                ; Run code
+                PUSH    {R0}                    ; Push PC onto usr_stack
 
-                MOV     PC, LR
+                ; Reset clock irq for context switch
+                BL      en_irq
 
-PCB_irq                
+
+
+                ; Move into user mode (not using change_mode routine as we
+                ; need to preserve regs)
+                MRS     R0, CPSR                ; Get current CPSR
+                BIC     R0, R0, #MODE_BITMASK   ; Clear low order bits
+                ORR     R0, R0, #MODE_USER      ; Set mode bits
+                MSR     CPSR_c, R0              ; Rewrite CPSR
+                NOP
+
+                ; Return to user code
+                POP     {PC}
+
+PCB_irq
+
+                BL      PCB_save_reg
+                BL      PCB_save_special_reg
+
+                BL      PCB_load_special_reg
+                BL      PCB_load_reg
+
+                PUSH    {R0-R1}                 ; just cos irq_end expects it
+                B       irq_end
 
 
 PCB_saved_sp    DEFW    1
