@@ -15,7 +15,7 @@ en_irq
 
             MRS     R1, CPSR                ; Get current CPSR
             BIC     R1, R1, #&80            ; Set mode bits
-            MSR     CPSR_c, R1              ; Rewrite CPSR
+            MSR     CPSR, R1              ; Rewrite CPSR
             NOP                             ; Apparently some ARM have a bug
                                             ; and this NOP fixes it
 

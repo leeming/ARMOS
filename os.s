@@ -167,8 +167,8 @@ start
         ;ADR     R0, helloworldStart
         ;BL      PCB_create_process
 
-        ;ADR     R0, flashyStart
-       ; BL      PCB_create_process
+        ADR     R0, flashyStart
+        BL      PCB_create_process
 
 
         ADR     R0, flashy3Start

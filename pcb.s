@@ -205,11 +205,16 @@ PCB_create_process
 
                 ;Set stack pointer
                 MOV     R0, #PCB_OFFSET_STACK
+                ADD     R0, R0, R3              ; Make sure SP actually points to abs addr
                 STR     R0, [R3, #PCB_OFFSET_SP]
 
                 ;Set initial PC
                 POP     {R0}
                 STR     R0, [R3, #PCB_OFFSET_PC]
+
+                ;Set initial 
+                MOV     R0, #MODE_USER
+                STR     R0, [R3, #PCB_OFFSET_CPSR]
 
                 POP     {R1-R3,LR}
                 MOV     PC, LR                  ;Return
@@ -247,11 +252,11 @@ PCB_run
                 STR R0, [R2]
 
                 ; Move into System mode
-                MRS     LR, CPSR                ; Get current CPSR
-                BIC     LR, LR, #MODE_BITMASK   ; Clear low order bits
-                ORR     LR, LR, #MODE_SYSTEM    ; Set mode bits
-                MSR     CPSR_c, LR              ; Rewrite CPSR
-                NOP
+                ;;MRS     LR, CPSR                ; Get current CPSR
+                ;;BIC     LR, LR, #MODE_BITMASK   ; Clear low order bits
+                ;;ORR     LR, LR, #MODE_SYSTEM    ; Set mode bits
+                ;;MSR     CPSR_c, LR              ; Rewrite CPSR
+                ;;NOP
 
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID
@@ -263,14 +268,15 @@ PCB_run
                 ; Get stack
                 ADD     R2, R1, #PCB_OFFSET_SP
                 LDR     SP, [R2]
-                ADD     SP, SP, R1              ; SP is saved as an offset, so make abs
+                ;;ADD     SP, SP, R1              ; SP is saved as an offset, so make abs
 
                 ; Get user PC
                 ADD     R2, R1, #PCB_OFFSET_PC  ; Address to load from
                 LDR     R0, [R2]                ; User_PC now stored in R0
 
-
+                LDR     SP, [R1, #PCB_OFFSET_SP]
                 PUSH    {R0}                    ; Push PC onto usr_stack
+                ;STMFD   R3!, {R0}
 
                 ; Reset clock irq for context switch
                 BL      en_irq
@@ -285,6 +291,7 @@ PCB_run
                 MSR     CPSR_c, R0              ; Rewrite CPSR
                 NOP
 
+               
                 ; Return to user code
                 POP     {PC}
 

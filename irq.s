@@ -63,7 +63,7 @@ irq_btn_st1
 
 irq_btn_debounce
             PUSH    {R0}
-            MOV     R0, #&FF0
+            MOV     R0, #&FF00
 _debounce_loop
             SUB     R0, R0, #1
             CMP     R0, #0
