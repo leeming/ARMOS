@@ -35,8 +35,11 @@ PCB_READY_QUEUE         DEFS    QUEUE_record_size
 ALIGN
 
 
-
-; Few PCB manager setup routines to run thru before adding processes
+;----------------------------
+; Few PCB manager setup routines to run
+; thru before adding processes
+;   Params: n/a
+;----------------------------
 PCB_setup
                 PUSH    {R0,R1,LR}
 
@@ -62,17 +65,14 @@ _setup_loop     BL      QUEUE_add
                 MOV     PC, LR
 
 
-
+;----------------------------
+; Save user process R0-R12 to its
+; PCB area in memory
+;   Params: R0-R12
+;----------------------------
 PCB_save_reg
-                POP     {R2-R5}                 ; Do a bit of stack shuffling
-                POP     {R0-R1}
-
-                PUSH    {LR}                    ; Keep a copy of LR since we are going
+                PUSH    {R0-R2,LR}              ; Keep a copy of LR since we are going
                                                 ; to use this as a tmp register
-
-                PUSH    {R0-R2}                 ; Stick these on top of the stack
-
-
 
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID      
@@ -92,6 +92,12 @@ PCB_save_reg
                 POP     {LR}                    ; Recover the original LR
                 MOV     PC, LR
 
+
+;----------------------------
+; Loads user process R0-R12 from
+; it's PCB area in memory
+;   Returns: R0-R12
+;----------------------------
 PCB_load_reg
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID
@@ -105,6 +111,11 @@ PCB_load_reg
 
                 MOV     PC, LR
 
+;----------------------------
+; Saves the user's 'special' registers
+; i.e. PC, SP, LR & CPSR
+;   Params: 
+;----------------------------
 PCB_save_special_reg
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID
@@ -127,7 +138,12 @@ PCB_save_special_reg
 
                 MOV     PC, LR
 
-
+;----------------------------
+; Loads the user's 'special' registers
+; i.e. PC, SP, LR & CPSR
+;   Returns: Restored registers with PC
+;        on top of usr_stack
+;----------------------------
 PCB_load_special_reg
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID
@@ -150,6 +166,10 @@ PCB_load_special_reg
 
                 MOV     PC, LR
 
+;----------------------------
+; Deprecated???
+;   Params:
+;----------------------------
 PCB_load_pc
                 PUSH    {R0-R1}
 
@@ -166,8 +186,11 @@ PCB_load_pc
                 POP     {R0-R1}                 ; Get our user reg back
                 MOV     PC, LR
 
-
-; R0 is the start address of the program
+;----------------------------
+; Creates a process starting at the
+; given address (R0)
+;   Params: R0 start address of program
+;----------------------------
 PCB_create_process
                 PUSH    {R1-R3,LR}
                 PUSH    {R0}                    ; Make sure these are top of the stack
@@ -177,7 +200,6 @@ PCB_create_process
                 ;Find next available PCB block
                 ADR     R1, PCB_SPARE_BLOCK_QUEUE
                 BL      QUEUE_remove
-;                BL      _PCB_find_next_avil
 
                 ;Calculate block offset
                 ;MOV     R1, #PCB_SIZE
@@ -219,28 +241,6 @@ PCB_create_process
                 POP     {R1-R3,LR}
                 MOV     PC, LR                  ;Return
 
-
-
-
-_PCB_find_next_avil
-
-                ;If we haven't even got to the max PCB yet
-                ; we can just use the next ID as an offset
-                LDR     R0, PCB_NEXT_PROC_ID
-                MOV     R1, #PCB_MAX_NUM
-         
-                CMP     R0, R1                  ; Actually need id-1 since id is from 1 not 0
-                BLT     _pick_head_pcb
-
-                ; Scan for any finished processes
-                ;TODO
-                
-                MOV     PC, LR
-
-_pick_head_pcb
-                ;At this stage R0 already holds the next proc id so just -1 and return
-                SUB     R0, R0, #1
-                MOV     PC, LR
 
 
 PCB_run
@@ -297,16 +297,83 @@ PCB_run
 
 PCB_irq
                 ; Add previous process to back of ready queue
+                ;PUSH    {R0,R1}        ; These can be scraped
+                ADR     R1, PCB_CURRENT_ID
+                LDR     R0, [R1]
+                ADR     R1, PCB_READY_QUEUE
+                BL      QUEUE_add
+                ;POP     {R0,R1}
+
+                ; Save off process' reg
+                POP     {R2-R5}                 ; Do a bit of stack shuffling
+                POP     {R0-R1}
+                BL      PCB_save_reg
+                BL      PCB_save_special_reg
+
+                BL      PCB_swap_in
+
+                PUSH    {R0-R1}                 ; just cos irq_end expects it
+                B       irq_end
+
+;----------------------------
+; Terminates current running process
+;   SYS_CALL
+;   Params: 
+;----------------------------
+PCB_terminate
+                ADR     R1, PCB_CURRENT_ID
+                LDR     R0, [R1]
+
+                ; Place (now free) block onto PCB_SPARE_BLOCK_QUEUE
+                ADR     R1, PCB_SPARE_BLOCK_QUEUE
+                BL      QUEUE_add
+
+                ; Reset timer irq
+                BL      clock_tick_reset
+
+                BL      PCB_swap_in
+
+                ; Recover usr_pc and branch
+                POP     {LR}
+                MOVS    PC, LR 
+
+;----------------------------
+; Terminates current running process
+;   SYS_CALL
+;   Params:
+;----------------------------
+PCB_nice
+                ; copy & paste from PCB_irq hack?
+                ; Add previous process to back of ready queue
                 PUSH    {R0,R1}
                 ADR     R1, PCB_CURRENT_ID
                 LDR     R0, [R1]
                 ADR     R1, PCB_READY_QUEUE
                 BL      QUEUE_add
                 POP     {R0,R1}
+                POP     {R4,R5}
 
                 ; Save off process' reg
                 BL      PCB_save_reg
                 BL      PCB_save_special_reg
+
+                ; Reset timer irq
+                BL      clock_tick_reset
+
+                BL      PCB_swap_in
+
+                ; Recover usr_pc and branch
+                POP     {LR}
+                MOVS    PC, LR 
+
+;----------------------------
+; Schedules in a process to run, but doesn't
+; save the currently running process. This
+; should be done elsewhere.
+;   Params:
+;----------------------------
+PCB_swap_in
+                PUSH    {R0,R1}
 
                 ; Get next process to switch in & update CURRENT_ID flag
                 ADR     R1, PCB_READY_QUEUE
@@ -318,8 +385,9 @@ PCB_irq
                 BL      PCB_load_special_reg
                 BL      PCB_load_reg
 
-                PUSH    {R0-R1}                 ; just cos irq_end expects it
-                B       irq_end
+                POP     {LR}
+                POP     {R0,R1}
+                MOV     PC, LR
 
 
 PCB_saved_sp    DEFW    1

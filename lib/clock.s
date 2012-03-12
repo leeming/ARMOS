@@ -49,10 +49,17 @@ _do_big_tick
 ; ** TODO ** Reset little tick counter too
 ;-------------------
 clock_tick_reset
+        ; Reset big tick
         PUSH    {R0,R1}
         ADR     R0, CLOCK_BIG_TICK
         MOV     R1, #0
         STR     R1, [R0]
+
+        ; Reset timer irq (little tick)
+        MOV     R0, #IO_space
+        LDRB    R1, [R0,#TIMER_CMP]     ; Load the timer compare
+        ADD     R1, R1, #CLOCK_TICK_LEN
+        STRB    R1, [R0,#TIMER_CMP]     ; Store updated timer compare
 
         POP     {R0,R1}
         MOV     PC, LR        

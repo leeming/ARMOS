@@ -123,11 +123,13 @@ _queue_wrap_head
 
 
 _queue_full_exception                           ; Print Exception & Hang (temp?)
-                ADRL     R0, e_full_queue
+                BL      LCD_clear
+                ADRL    R0, e_full_queue
                 BL      LCD_write_str
                 B       end
 
 _queue_empty_exception                          ; Print Exception & Hang (temp?)
-                ADRL     R0, e_empty_queue
+                BL      LCD_clear
+                ADRL    R0, e_empty_queue
                 BL      LCD_write_str
                 B       end

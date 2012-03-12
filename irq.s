@@ -73,5 +73,6 @@ _debounce_loop
             MOV     PC, LR
 
 irq_end
-			POP     {R0-R1,LR}
+		    ; Add previous proce
+            POP     {R0-R1,LR}
             MOVS    PC, LR

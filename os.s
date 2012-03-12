@@ -152,30 +152,34 @@ INCLUDE pcb.s
 ;-------------------------------------------------------------------			
 
 INCLUDE user_progs/helloworld.s
-MOV PC, LR
-
+        SVC     kill
 INCLUDE user_progs/counter.s
+        SVC     kill
 INCLUDE user_progs/testPrintDigit.s
+        SVC     kill
 INCLUDE user_progs/flashy.s
+        SVC     kill
 INCLUDE user_progs/flashy2.s
+        SVC     kill
 INCLUDE user_progs/flashy3.s
+        SVC     kill
 
 
 
 ;Start the user programs here
 start
-        ;ADR     R0, helloworldStart
-        ;BL      PCB_create_process
+        ADR     R0, helloworldStart
+        BL      PCB_create_process
 
         ADR     R0, flashyStart
         BL      PCB_create_process
 
 
-        ADR     R0, flashy3Start
-        BL      PCB_create_process
+;        ADR     R0, flashy3Start
+;        BL      PCB_create_process
 
-        ADR     R0, flashy2Start
-        BL      PCB_create_process
+;        ADR     R0, flashy2Start
+;        BL      PCB_create_process
 
 
         BL      PCB_run

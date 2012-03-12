@@ -13,6 +13,7 @@ helloString
 
 helloworldStart
         nop
+       ; SVC nice
 
 helloworldMain
         ADR r0, helloString
