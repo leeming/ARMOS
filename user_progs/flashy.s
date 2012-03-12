@@ -15,7 +15,7 @@ flashyMain
                 
 
 
-                MOV     R3, #0x3F000
+                MOV     R3, #0x0F000
 _flashy_subLoop SUB     R3, R3, #1
                 CMP     R3, #0
                 BNE _flashy_subLoop
