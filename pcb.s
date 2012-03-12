@@ -236,6 +236,7 @@ PCB_create_process
 
                 ;Set initial 
                 MOV     R0, #MODE_USER
+                AND     R0, R0, #IRQ_EN_BITMASK
                 STR     R0, [R3, #PCB_OFFSET_CPSR]
 
                 POP     {R1-R3,LR}
@@ -373,11 +374,15 @@ PCB_nice
 ;   Params:
 ;----------------------------
 PCB_swap_in
-                PUSH    {R0,R1}
+                SUB     SP, SP, #4
+                PUSH    {LR}
+                
 
                 ; Get next process to switch in & update CURRENT_ID flag
                 ADR     R1, PCB_READY_QUEUE
                 BL      QUEUE_remove
+
+                ADD     SP, SP, #8
                 ADR     R1, PCB_CURRENT_ID
                 STR     R0, [R1]
 
@@ -385,8 +390,8 @@ PCB_swap_in
                 BL      PCB_load_special_reg
                 BL      PCB_load_reg
 
+                SUB     SP, SP, #4
                 POP     {LR}
-                POP     {R0,R1}
                 MOV     PC, LR
 
 

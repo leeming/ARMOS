@@ -175,11 +175,11 @@ start
         BL      PCB_create_process
 
 
-;        ADR     R0, flashy3Start
-;        BL      PCB_create_process
+        ADR     R0, flashy3Start
+        BL      PCB_create_process
 
-;        ADR     R0, flashy2Start
-;        BL      PCB_create_process
+        ADR     R0, flashy2Start
+        BL      PCB_create_process
 
 
         BL      PCB_run
