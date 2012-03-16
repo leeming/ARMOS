@@ -6,9 +6,10 @@ QUEUE_record_size       WORD
 
 QUEUE_null              EQU    0xFF
 
-
+;----------------------------
 ; Init a queue
 ; R0 - Ptr to queue record
+;----------------------------
 QUEUE_init
                 PUSH    {R1,R2}
 
@@ -27,8 +28,10 @@ QUEUE_init
                 MOV PC, LR
 
 
+;----------------------------
 ; R0: Value to put on queue
 ; R1: Queue to add to
+;----------------------------
 QUEUE_add
                 PUSH    {R1-R6}
                 
@@ -78,8 +81,10 @@ _queue_wrap_top
 
 ; End PCB_add_ready_queue
 
+;----------------------------
 ; Returns item on R0
 ; R1: Queue to remove from
+;----------------------------
 QUEUE_remove
                 PUSH    {R2-R4}
                 ;Check for empty queue

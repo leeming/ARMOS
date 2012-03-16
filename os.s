@@ -17,7 +17,13 @@ INCLUDE params_labboard.s
         B   data_abort                  ; Data abort
         nop								; Unused
         B   irq                         ; Interupt
-        B   fiq                         ; Fast Interupt
+        ;B   fiq                         ; Fast Interupt
+        BL  LCD_clear
+        ADRL    R0, fiq_bye
+        BL   LCD_write_str
+        B   end
+
+
 ;-------------------------------------------------------------------            
 
 ; Include all libaries needed
@@ -188,8 +194,10 @@ start
 
         SVC		0						; Quit
 
-svc_unknown_str 	DEFB 	"Unknown SVC #", 0	
-			ALIGN
+svc_unknown_str     DEFB    "Unknown SVC #", 0
+            ALIGN
+fiq_bye             DEFB    "Kthxbye", 0
+            ALIGN
 nop
 on_time         DEFS     1
                 ALIGN

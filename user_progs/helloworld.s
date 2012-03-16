@@ -8,7 +8,9 @@
 ;---------------------------------------------------; 
 
 helloString
-        DEFB    "Context Switching (y)", 0
+        ;DEFB    "Hello Man-UP", 0
+        ;DEFB    "Don't Steal Me", 0
+		DEFB	"Hello World", 0
         ALIGN
 
 helloworldStart
