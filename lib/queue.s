@@ -29,8 +29,10 @@ QUEUE_init
 
 
 ;----------------------------
-; R0: Value to put on queue
-; R1: Queue to add to
+; Add a value to tail of a queue
+;
+; Params: R0 - Value to put on queue
+;         R1 - Queue to add to
 ;----------------------------
 QUEUE_add
                 PUSH    {R1-R6}

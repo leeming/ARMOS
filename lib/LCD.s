@@ -1,11 +1,8 @@
 ;---------------------------
-; <<routine>>
-; 	<<desc>>
+; LCD_en
+;   Enable the LCD, ready to write to
 ;
-;	Params: 
-;	Return: 
-;
-; Tested : No
+;	Params: N/A
 ;---------------------------
 LCD_en		
 			PUSH	{r0,r1}
@@ -17,13 +14,10 @@ LCD_en
 			MOV		PC, LR
 
 ;---------------------------
-; <<routine>>
-; 	<<desc>>
+; LCD_disable   
+;   Disable LCD
 ;
-;	Params: 
-;	Return: 
-;
-; Tested : No
+;	Params: N/A
 ;---------------------------
 LCD_disable	
 			PUSH	{r0,r1}
@@ -39,9 +33,6 @@ LCD_disable
 ; 	Turns on the board backlight
 ;
 ;	Params: N/A
-;	Return: N/A
-;
-; Tested : Yes
 ;---------------------------
 LCD_backlight_on
 			PUSH	{r0,r1}		
@@ -57,9 +48,6 @@ LCD_backlight_on
 ; 	Turns off the board backlight
 ;
 ;	Params: N/A
-;	Return: N/A
-;
-; Tested : Yes
 ;---------------------------
 LCD_backlight_off
 			PUSH	{r0-r4}
@@ -76,9 +64,6 @@ LCD_backlight_off
 ;	from LCD_write_char and LCD_read_char (?)
 ;
 ;	Params: N/A
-;	Return: N/A
-;
-; Tested : No - ish
 ;---------------------------
 LCD_io_wait
 			PUSH	{r0-r3}
@@ -112,9 +97,6 @@ _lcdiowait
 ; 	<desc>
 ;
 ;	Params: R0 - Char to print
-;	Return: N/A
-;
-; Tested : No
 ;---------------------------
 LCD_write_char
 			PUSH 	{r1-r3,LR}                ; Make sure we preserve these reg
@@ -150,9 +132,6 @@ LCD_write_char
 ;	null terminated.
 ;
 ;	Params: R0 - Address of string to print
-;	Return: N/A
-;
-; Tested : Yes
 ;---------------------------
 LCD_write_str
 			PUSH 	{r0,r4,LR}			; Save Reg that are used
@@ -177,9 +156,6 @@ _print_str_end
 ; 	Sends a command character to the LCD
 ;
 ;	Params: R0 - Command character #
-;	Return: N/A
-;
-; Tested : No - Only clear
 ;---------------------------
 LCD_write_cmd
 			PUSH 	{r1,r2,LR}              ; Make sure we preserve these reg
@@ -212,9 +188,6 @@ LCD_write_cmd
 ; 	Wrapper routine to clear the LCD
 ;
 ;	Params: N/A
-;	Return: N/A
-;
-; Tested : No 
 ;---------------------------
 LCD_clear
         PUSH    {R0, LR}

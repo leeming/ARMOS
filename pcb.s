@@ -19,31 +19,29 @@ PCB_OFFSET_STACK    WORD
 PCB_OFFSET_BOTTOM   WORD
 
 
-PCB_NEXT_PROC_ID    DEFW   0x01        ; Next new proc id
+PCB_NEXT_PROC_ID    DEFW   0x01        ; Next new procces id
 PCB_CURRENT_ID      DEFW   0x01        ; PCB currently active
-;;DEPRECATED? PCB_MAX_TIMESLICE    EQU    0x05        ; Number of clock ticks per timeslice
-PCB_MAX_NUM         EQU    0x04        ; Maximum number of PCBs
+PCB_MAX_NUM         EQU    0x05        ; Maximum number of PCBs
 
-PCB_SIZE            EQU    (PCB_OFFSET_BOTTOM - PCB_record)
-PCB_QUEUE_NULL      EQU    0xFF
+PCB_SIZE            EQU    (PCB_OFFSET_BOTTOM - PCB_record)  
 
 
-;;PCB_saved_sp        DEFW    1       ; Deprecated????
 
-PCB_total           EQU     PCB_SIZE*PCB_MAX_NUM
-PCB_offset          DEFS    PCB_total           ; TODO rename this
-PCB_offset_end      NOP
+PCB_total           EQU    PCB_SIZE*PCB_MAX_NUM
+PCB_area            DEFS   PCB_total           ; TODO rename this
+PCB_area_end        NOP
 ALIGN
 
 
-PCB_SPARE_BLOCK_QUEUE   DEFS    QUEUE_record_size
+; Define the queues we will use for PCBs
+PCB_SPARE_BLOCK_QUEUE   DEFS    QUEUE_record_size   ; List of free PCB blocks
 ALIGN
-PCB_READY_QUEUE         DEFS    QUEUE_record_size
-ALIGN
+PCB_READY_QUEUE         DEFS    QUEUE_record_size   ; FIFO queue of ready processes
+ALIGN                                               ; waiting for scheduling
 
 
 ;----------------------------
-; Few PCB manager setup routines to run
+; Few `PCB manager` setup routines to run
 ; thru before adding processes
 ;   Params: n/a
 ;----------------------------
@@ -57,17 +55,16 @@ PCB_setup
                 MOV     R0, #PCB_MAX_NUM
                 SUB     R0, R0, #1
 
-_setup_loop     BL      QUEUE_add
-                SUB     R0, R0, #1
+_setup_loop     BL      QUEUE_add                   ; Add in each PCB block
+                SUB     R0, R0, #1                  ; to spare block queue
                 CMP     R0, #0
                 BGE     _setup_loop
 
 
                 ; Set up ready queue
                 ADR     R0, PCB_READY_QUEUE
-                BL      QUEUE_init
+                BL      QUEUE_init                  ; Init empty wait queue
                 
-
                 POP     {R0,R1,LR}
                 MOV     PC, LR
 
@@ -84,7 +81,7 @@ PCB_save_reg
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID      
                 MOV     R1, #PCB_SIZE
-                ADR     R2, PCB_offset          ; Get offset address of PCB
+                ADRL    R2, PCB_area            ; Get offset address of PCB
                 MUL     R1, R1, R0              ; Offset per PCB block
                 ADD     LR, R1, R2              ; LR is now the base address for the PCB
 
@@ -94,7 +91,7 @@ PCB_save_reg
 
                 ADD     LR, LR, #PCB_OFFSET_REG ;Address to store to
 
-                STMIA   LR!, {R0-R12}           ; Store all reg to LR pointer
+                STMIA   LR!, {R0-R12}           ; Store all reg at LR pointer
 
                 POP     {LR}                    ; Recover the original LR
                 MOV     PC, LR
@@ -109,7 +106,7 @@ PCB_load_reg
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID
                 MOV     R1, #PCB_SIZE
-                ADRL     R2, PCB_offset          ; Get offset address of PCB
+                ADRL     R2, PCB_area           ; Get offset address of PCB
                 MUL     R1, R1, R0              ; Offset per PCB block
                 ADD     R3, R1, R2              ; R3 is now the base address for the PCB
 
@@ -121,13 +118,13 @@ PCB_load_reg
 ;----------------------------
 ; Saves the user's 'special' registers
 ; i.e. PC, SP, LR & CPSR
-;   Params: 
+;   Params: n/a? usr_sp, usr_lr, SPSR
 ;----------------------------
 PCB_save_special_reg
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID
                 MOV     R1, #PCB_SIZE
-                ADRL     R2, PCB_offset          ; Get offset address of PCB
+                ADRL    R2, PCB_area            ; Get offset address of PCB
                 MUL     R1, R1, R0              ; Offset per PCB block
                 ADD     R3, R1, R2              ; R3 is now the base address for the PCB
 
@@ -155,7 +152,7 @@ PCB_load_special_reg
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID
                 MOV     R1, #PCB_SIZE
-                ADRL     R2, PCB_offset          ; Get offset address of PCB
+                ADRL    R2, PCB_area            ; Get offset address of PCB
                 MUL     R1, R1, R0              ; Offset per PCB block
                 ADD     R3, R1, R2              ; R3 is now the base address for the PCB
 
@@ -173,25 +170,6 @@ PCB_load_special_reg
 
                 MOV     PC, LR
 
-;----------------------------
-; Deprecated???
-;   Params:
-;----------------------------
-PCB_load_pc
-                PUSH    {R0-R1}
-
-                ;Load base address of current active PCB
-                LDR     R0, PCB_CURRENT_ID
-                MOV     R1, #PCB_SIZE
-                MUL     R1, R1, R0              ; Offset per PCB block
-                ADRL     R0, PCB_offset          ; Get offset address of PCB
-                ADD     R1, R1, R0              ; R1 is now the base address for the PCB
-
-                ADD     R1, R1, #PCB_OFFSET_PC  ; Address to load from
-                LDR     LR, [R1]                ; User_PC now stored in SVC_LR
-
-                POP     {R0-R1}                 ; Get our user reg back
-                MOV     PC, LR
 
 ;----------------------------
 ; Creates a process starting at the
@@ -203,25 +181,24 @@ PCB_create_process
                 PUSH    {R0}                    ; Make sure these are top of the stack
                                                 ; as they are params for this routine
 
-
+d2
                 ;Find next available PCB block
                 ADRL     R1, PCB_SPARE_BLOCK_QUEUE
                 BL      QUEUE_remove
 
                 ;Calculate block offset
-                ;MOV     R1, #PCB_SIZE
                 MOV     R1,  #PCB_OFFSET_BOTTOM
-                MUL     R1, R1, R0              ; Offset from 'PCB_offset'
+                MUL     R1, R1, R0              ; Offset from 'PCB_area'
 
                 ;Set process ID
                 LDR     R2, PCB_NEXT_PROC_ID    ; Load next available ID
-                ADR     R3, PCB_offset          ; Grab PCB offset and calculate
+                ADRL    R3, PCB_area            ; Grab PCB offset and calculate
                 ADD     R3, R3, R1              ; base address for this PCB
 
                 STR     R2, [R3, #PCB_OFFSET_ID]; Store ID in PCB R0
 
                 ADD     R2, R2, #1              ; Increment next available ID
-                ADRL     R4, PCB_NEXT_PROC_ID    ; Grab address location
+                ADRL    R4, PCB_NEXT_PROC_ID    ; Grab address location
                 STR     R2, [R4]                ; Store new inc
 
                 ;Stick on ready queue
@@ -250,7 +227,10 @@ PCB_create_process
                 MOV     PC, LR                  ;Return
 
 
-
+;----------------------------
+; Starts the scheduler running
+;   Params: n/a
+;----------------------------
 PCB_run
                 ; Pick queue head
                 ADRL R1, PCB_READY_QUEUE
@@ -259,32 +239,24 @@ PCB_run
                 ADRL R2, PCB_CURRENT_ID
                 STR R0, [R2]
 
-                ; Move into System mode
-                ;;MRS     LR, CPSR                ; Get current CPSR
-                ;;BIC     LR, LR, #MODE_BITMASK   ; Clear low order bits
-                ;;ORR     LR, LR, #MODE_SYSTEM    ; Set mode bits
-                ;;MSR     CPSR_c, LR              ; Rewrite CPSR
-                ;;NOP
-
                 ;Load base address of current active PCB
                 LDR     R0, PCB_CURRENT_ID
                 MOV     R1, #PCB_SIZE
                 MUL     R1, R1, R0              ; Offset per PCB block
-                ADR     R0, PCB_offset          ; Get offset address of PCB
+                ADRL    R0, PCB_area            ; Get offset address of PCB
                 ADD     R1, R1, R0              ; R1 is now the base address for the PCB
 
                 ; Get stack
-                ADD     R2, R1, #PCB_OFFSET_SP
-                LDR     SP, [R2]
-                ;;ADD     SP, SP, R1              ; SP is saved as an offset, so make abs
+                ;;ADD     R2, R1, #PCB_OFFSET_SP
+                ;;LDR     SP, [R2]
+                LDR     SP, [R1, #PCB_OFFSET_SP]
 
                 ; Get user PC
                 ADD     R2, R1, #PCB_OFFSET_PC  ; Address to load from
                 LDR     R0, [R2]                ; User_PC now stored in R0
 
-                LDR     SP, [R1, #PCB_OFFSET_SP]
+                
                 PUSH    {R0}                    ; Push PC onto usr_stack
-                ;STMFD   R3!, {R0}
 
                 ; Reset clock irq for context switch
                 BL      en_irq
@@ -303,10 +275,15 @@ PCB_run
                 ; Return to user code
                 POP     {PC}
 
-PCB_irq
+;----------------------------
+; Interupt routine for doing the
+; actual context switch
+;   Params: n/a
+;----------------------------
+PCB_irq nop
                 ; Add previous process to back of ready queue
                 ;PUSH    {R0,R1}        ; These can be scraped
-                ADR     R1, PCB_CURRENT_ID
+d5                ADRL    R1, PCB_CURRENT_ID
                 LDR     R0, [R1]
                 ADR     R1, PCB_READY_QUEUE
                 BL      QUEUE_add
@@ -320,7 +297,7 @@ PCB_irq
 
                 BL      PCB_swap_in
 
-                PUSH    {R0-R1}                 ; just cos irq_end expects it
+                PUSH    {R0-R1}                 ; irq_end expects to pop R0,R1
                 B       irq_end
 
 ;----------------------------
@@ -329,7 +306,7 @@ PCB_irq
 ;   Params: 
 ;----------------------------
 PCB_terminate
-                ADRL     R1, PCB_CURRENT_ID
+                ADRL    R1, PCB_CURRENT_ID
                 LDR     R0, [R1]
 
                 ; Place (now free) block onto PCB_SPARE_BLOCK_QUEUE
@@ -351,10 +328,9 @@ PCB_terminate
 ;   Params:
 ;----------------------------
 PCB_nice
-                ; copy & paste from PCB_irq hack?
                 ; Add previous process to back of ready queue
                 PUSH    {R0,R1}
-                ADRL     R1, PCB_CURRENT_ID
+                ADRL    R1, PCB_CURRENT_ID
                 LDR     R0, [R1]
                 ADR     R1, PCB_READY_QUEUE
                 BL      QUEUE_add
@@ -367,7 +343,6 @@ PCB_nice
 
                 ; Reset timer irq
                 BL      clock_tick_reset
-
                 BL      PCB_swap_in
 
                 ; Recover usr_pc and branch
@@ -390,7 +365,7 @@ PCB_swap_in
                 BL      QUEUE_remove
 
                 ADD     SP, SP, #8
-                ADRL     R1, PCB_CURRENT_ID
+                ADRL    R1, PCB_CURRENT_ID
                 STR     R0, [R1]
 
                 ; Load in next process' reg

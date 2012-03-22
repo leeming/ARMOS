@@ -1,8 +1,8 @@
-CLOCK_TICK          DEFW   0            ; Number of ticks since start
+CLOCK_TICK          DEFW   0            ;   
 CLOCK_TICK_LEN      DEFW   100          ; Number of ms per tick
 
-CLOCK_BIG_TICK      DEFW    0
-CLOCK_BIG_TICK_LEN  DEFW    1;40
+CLOCK_BIG_TICK      DEFW    0           ; Number of ticks since start
+CLOCK_BIG_TICK_LEN  DEFW    1           ; Threshold for CLOCK_TICK -  1=fast, 40=slow
 
 
 ;-------------------
@@ -37,16 +37,18 @@ clock_tick
         B       irq_end
 
 _do_big_tick
+        ;Increment Big Tick counter
         ADR     R4, CLOCK_BIG_TICK
         LDR     R5, [R4]
         ADD     R5, R5, #1
         STR     R5, [R4]
 
+
+
         B       PCB_irq
 
 ;-------------------
 ; Resets the big tick counter
-; ** TODO ** Reset little tick counter too
 ;-------------------
 clock_tick_reset
         ; Reset big tick
@@ -62,33 +64,12 @@ clock_tick_reset
         STRB    R1, [R0,#TIMER_CMP]     ; Store updated timer compare
 
         POP     {R0,R1}
-        MOV     PC, LR        
-
+        MOV     PC, LR
 
 
 ; Old code below here??????
 clock_read
-			push	{r1}
-			mov		r1, #IO_space
-			ldrb	r0, [r1,#TIMER_CMP]		; Load the timer compare
-			pop		{r1, pc}^
-
-clock_set_cmp
-			push	{r3,r4}
-			
-			mov     r4, #IO_space 
-			ldrb    r3, [r4,#TIMER_CMP]     ; Load the timer compare
-            add     r3, r3, R0              ; Add an additional [R0]ms
-            strb    r3, [r4,#TIMER_CMP]     ; Store updated timer compare
-			pop		{r3,r4,pc}^
-
-
-print_time
-            push    {r0}
-            SVC     clear_screen
-
-            MOV R0, R9
-            BL LCD_print_dec
-
-            pop     {r0}
-            b       irq_end
+        push {r1}
+        mov r1, #IO_space
+        ldrb r0, [r1,#TIMER_CMP] ; Load the timer compare
+        pop {r1, pc}^       

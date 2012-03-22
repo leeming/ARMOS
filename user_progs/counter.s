@@ -19,14 +19,16 @@ _subLoop        SUB r0, r0, #1
                 CMP r0, #0
                 BNE _subLoop
 
+                MOV R0, #1
+                MOV R1, #0
+                SVC set_lcd_cursor
+
                 LDR r0, currentCounter
                 ADD r0, r0, #1
                 STR r0, currentCounter
 
-                nop;check R0 before
-                SWI clear_screen
+                ;SWI clear_screen
 
-                nop;check R0 after
                 BL LCD_print_dec
 
 

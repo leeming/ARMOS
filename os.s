@@ -1,4 +1,4 @@
-;------------------------------------------------------------------- 
+f ;------------------------------------------------------------------- 
 ;	Attempt at making basic interupts & OS							;
 ;																	;
 ;	By Andrew Leeming - 2011										;
@@ -7,35 +7,36 @@
 INCLUDE params_labboard.s
 
 
-        org	&0
+            org	&0
 
 ; Set up the Exception vectors
-        B   reset                       ; Reset
-        B   undefinstr                  ; Undefined Instruction
-        B   svc_entry                   ; Supervisor Call/ Software Interupt
-        B   prefetch_abort              ; Prefetch abort
-        B   data_abort                  ; Data abort
-        nop								; Unused
-        B   irq                         ; Interupt
-        ;B   fiq                         ; Fast Interupt
-        BL  LCD_clear
-        ADRL    R0, fiq_bye
-        BL   LCD_write_str
-        B   end
+            B       reset                   ; Reset
+            B       undefinstr              ; Undefined Instruction
+            B       svc_entry               ; Supervisor Call/ Software Interupt
+            B       prefetch_abort          ; Prefetch abort
+            B       data_abort              ; Data abort
+            nop								; Unused
+            B       irq                     ; Interupt
+
+            ; Fast Interupt     
+            BL      LCD_clear
+            ADRL    R0, fiq_bye
+            BL      LCD_write_str
+            B       end
 
 
 ;-------------------------------------------------------------------            
 
 ; Include all libaries needed
-        INCLUDE lib/LCD.s
-        INCLUDE lib/LED.s
-        INCLUDE lib/clock.s
-        INCLUDE lib/math.s
-        INCLUDE lib/bcd_convert.s
-        INCLUDE lib/system.s
-        INCLUDE lib/queue.s
+            INCLUDE lib/LCD.s
+            INCLUDE lib/LED.s
+            INCLUDE lib/clock.s
+            INCLUDE lib/math.s
+            INCLUDE lib/bcd_convert.s
+            INCLUDE lib/system.s
+            INCLUDE lib/queue.s
 
-        INCLUDE error.s
+            INCLUDE error.s
 
 
 ; Implementations of Exception vectors are handled here
@@ -77,38 +78,35 @@ reset
             MOV     r0, #0xC1               ; Timer + buttons
             STR     r0, [r8, #IRQ_EN]       ;
 
-; dont change into user mode for now
-B start
+d1
+            ; Start creating user processes
+            ADRL    R0, helloworldStart
+            BL      PCB_create_process
 
-			; Change to user mode
-			MRS 	R0, CPSR 				; Get current CPSR
-			BIC 	R0, R0, #&8F 			; Clear low order bits + set IRQ&FIQ
-			MSR 	CPSR_c, R0 				; Rewrite CPSR
-			NOP								; Apparently some ARM have a bug
-											; and this NOP fixes it
-			
-			ADRL	SP, usr_stack			; Set user stack pointer up
+            ADRL    R0, flashyStart
+            BL      PCB_create_process
 
-        ; Reset reg0-9 to a known value
-        MOV		R0, #0
-        MOV		R1, #0
-        MOV		R2, #0
-        MOV		R3, #0
-        MOV		R4, #0
-        MOV		R5, #0
-        MOV		R6, #0
-        MOV		R7, #0
-        MOV		R8, #0
-        MOV		R9, #0
+            ADRL    R0, flashy3Start
+            BL      PCB_create_process
 
-        B		start					; Start the program
-			
-			
+            ADRL    R0, flashy2Start
+            BL      PCB_create_process
+
+   
+            ADRL    R0, counterStart
+            BL      PCB_create_process
+
+
+d3
+            ; Start the scheduler
+            BL      PCB_run
+            SVC     0                       ; Quit
 			
 undefinstr	
 			B		.	;end
 			
-			
+
+d6  nop
 svc_entry
 			PUSH	{R4,R5,LR}				; Remember to save arg (if any)
 											; from the initial call
@@ -124,28 +122,23 @@ svc_entry
 			ADRL    R5, svc_table			; Grab address of SVC table
 			LDR		PC, [R5, R4, LSL #2]	; Grab routine address from jump table
 
-			;B		end						; End program ? This code isnt reachable
 
 svc_end
 			POP		{R4,R5,LR}				; Recover registers prior to SVC
 			MOVS	PC, LR					; Return back to user land
-			
+
+
 ; code crashes and runs ?off the end? of the RAM
 prefetch_abort
             B       prefetch_abort_handler
-			;B		. ;end						; End program
+
 
 ; attempt to read or write an I/O port while in user mode
 data_abort
             B       data_abort_handler
-			B		. ;end						; End program
 
 ; irq
 INCLUDE irq.s
-
-
-fiq
-			B		. ;end						; End program
 
 ;-------------------------------------------------------------------
 
@@ -172,34 +165,10 @@ INCLUDE user_progs/flashy3.s
 
 
 
-;Start the user programs here
-start
-        ADR     R0, helloworldStart
-        BL      PCB_create_process
 
-        ADR     R0, flashyStart
-        BL      PCB_create_process
-
-
-        ADR     R0, flashy3Start
-        BL      PCB_create_process
-
-        ADR     R0, flashy2Start
-        BL      PCB_create_process
-
-
-        BL      PCB_run
-
-
-
-        SVC		0						; Quit
-
-svc_unknown_str     DEFB    "Unknown SVC #", 0
-            ALIGN
-fiq_bye             DEFB    "Kthxbye", 0
-            ALIGN
-nop
-on_time         DEFS     1
+svc_unknown_str DEFB    "Unknown SVC #", 0
+                ALIGN
+fiq_bye         DEFB    "Halting", 0
                 ALIGN
 
 ;-------------------------------------------------------------------
@@ -207,21 +176,21 @@ on_time         DEFS     1
 
 
 ;Setup usermode stack : No longer needed as PCBs have own stack?
-			DEFS	100
+                DEFS	100
 usr_stack
 
 ;Setup supervisor stack
-			DEFS	100
+                DEFS	100
 svr_stack
 
 ;Setup abort stack
-            DEFS    100
+                DEFS    100
 abort_stack
 
 ;Setup interupt stack
-            DEFS    100
+                DEFS    100
 irq_stack
 
 ;Setup fast interupt stack
-			DEFS	100
+                DEFS	100
 fiq_stack

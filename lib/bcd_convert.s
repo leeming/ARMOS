@@ -1,29 +1,29 @@
-; This code was originaly sourced from '/opt/info/courses/COMP22712/Code_examples/bcd_convert.s'
-
-
 ;-------------------------------------------------------------------------------
-
+; This code was originaly sourced from '/opt/info/courses/COMP22712/Code_examples/bcd_convert.s'
+;
+;
 ; Convert unsigned binary value in R0 into BCD representation, returned in R0
 ; Any overflowing digits are generated, but not retained or returned in this
 ;  version.
 ; Corrupts registers R1-R6, inclusive; also R14
 ; Does not require a stack
 
+
 bcd_convert
-        mov	r6, lr			; Keep return address
-						;  in case there is no stack
+        mov	r6, lr			    ; Keep return address
+                                ;  in case there is no stack
 		adr	r4, dec_table		; Point at conversion table
-		mov	r5, #0			; Zero accumulator
+		mov	r5, #0			    ; Zero accumulator
 
-bcd_loop	ldr	r1, [r4], #4		; Get next divisor, step pointer
-		cmp	r1, #1			; Termination condition?
-		beq	bcd_out			;  yes
+bcd_loop	ldr	r1, [r4], #4    ; Get next divisor, step pointer
+		cmp	r1, #1			    ; Termination condition?
+		beq	bcd_out			    ;  yes
 
-		bl	divide			; R0 := R0/R1 (rem. R2)
+		bl	divide			    ; R0 := R0/R1 (rem. R2)
 
 		add	r5, r0, r5, lsl #4	; Accumulate result
-		mov	r0, r2			; Recycle remainder
-		b	bcd_loop		;
+		mov	r0, r2			    ; Recycle remainder
+		b	bcd_loop		    ;
 
 bcd_out		add	r0, r0, r5, lsl #4	; Accumulate result to output
 
